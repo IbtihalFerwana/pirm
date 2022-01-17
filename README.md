@@ -3,7 +3,7 @@
 2. use the running_examples.ipynb as a guidance for running the irm script
 3. you can try different IRM penalty/regularizer values
 
-#### Time periods are defined as following:
+#### Time periods are defined as following (same for erm):
 `input value` --> `included years`
 
 `1980` --> `[1980 - 1989]`
