@@ -3,6 +3,7 @@
 2. The splits are equal sized periods for a given period range
 3. The years range is given as [min, max), max year is exluded, e.g., one should use [1980, 2017) to include 2016.
 4. The sample sizes at each time period are equalized with no augmentation, hence some would have different sample size. (This can be changed) 
+5. One should use the raw data of SciERC dataset found in GDrive folder and here: http://nlp.cs.washington.edu/sciIE/
 
 ### To run the file, use the following arguments. 
 ```
