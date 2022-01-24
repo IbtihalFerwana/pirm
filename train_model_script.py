@@ -96,12 +96,13 @@ def evaluate(model, test_data, tokenizer, use_cuda, device):
     print(f'Test Accuracy: {total_acc_test / len(test_data[1]): .3f}')
     return total_acc_test / len(test_data[1])
     
-def validate(model, val_data, tokenizer, use_cuda, device):
+def validate(model, val_loader, data_len, tokenizer, use_cuda, device):
     
-    data_len = len(val_data[0])
-    val_data = Dataset(val_data, tokenizer)
+    #data_len = len(val_data[0])
+    #val_data = Dataset(val_data, tokenizer)
 
-    val_dataloader = torch.utils.data.DataLoader(val_data, batch_size=2)
+    #val_dataloader = torch.utils.data.DataLoader(val_data, batch_size=2)
+    val_dataloader = val_loader
 
     if use_cuda:
         model = model.cuda()
@@ -126,7 +127,7 @@ def validate(model, val_data, tokenizer, use_cuda, device):
         acc = (output.argmax(dim=1) == val_label).sum().item()
         total_acc_val += acc
 
-    print(f'Validation Accuracy: {total_acc_val / len(data_len): .3f}')    
+    print(f'Validation Accuracy: {total_acc_val / data_len: .3f}')    
     return  total_loss_val/data_len, total_acc_val/data_len
 
 def penalty(logits, y, criterion):
@@ -144,7 +145,7 @@ def mean_accuracy(logits, y):
 
 
 
-def train_model(n_steps, envs, model, tokenizer, optim, args, method='erm'):
+def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, optim, args, method='erm'):
 
     l2_regularizer_weight = args.l2_regularizer
     p_weight = args.penalty_weight
@@ -285,6 +286,9 @@ def train_model(n_steps, envs, model, tokenizer, optim, args, method='erm'):
                 print(f'Steps: {step+1} | Training Loss: {sum(train_loss_ls_epoch)/len(train_loss_ls_epoch):.3f} | \
                             Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f}')
 
+        
+        val_loss, val_acc = validate(model, val_dataloader, val_data_len, tokenizer, use_cuda, device)
+
         if len(val_acc_ls) > 0:
             print(f'Epoch: {epoch} | Training Loss: {sum(train_loss_ls_epoch)/len(train_loss_ls_epoch):.3f} | \
                         Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f} | \
@@ -294,7 +298,7 @@ def train_model(n_steps, envs, model, tokenizer, optim, args, method='erm'):
                         Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f}')
             
 
-    return train_loss_ls, train_acc_ls, val_acc_ls     
+    return train_loss_ls, train_acc_ls, val_acc_ls, val_acc     
         
 
 
@@ -376,7 +380,7 @@ if __name__ == "__main__":
         val_files.append(g_val[0])
         
     gcd_num = int(np.gcd.reduce(lengths))
-    batch_sizes = np.array(lengths)/gcd_num
+    batch_sizes = ((np.array(lengths)/gcd_num))*2
     batch_sizes = [int(i) for i in batch_sizes]
     dataloaders = []
 
@@ -400,27 +404,33 @@ if __name__ == "__main__":
     
     # envs = envs + valid_envs    
 
-    steps = gcd_num
-
-
-    train_loss, train_acc, valid_acc = train_model(steps, envs, model, tokenizer, optimizer, args, args.method)
-
-
-    if(len(valid_acc) > 0):
-        train_history = pd.DataFrame(list(zip(train_loss, train_acc, valid_acc)), columns = ["Loss", "Train Accuracy", "Validation Accuracy"])
-    else:
-        train_history = pd.DataFrame(list(zip(train_loss, train_acc)), columns = ["Loss", "Accuracy"])    
-
+    steps = gcd_num//2
+    text_list_val = []
+    labels_list_val = []
 
     for val_file in val_files:
         with open(val_file, 'r') as f:
             lines = f.readlines()
             for line in lines:
                 d = json.loads(line)
-                text_list.append(d["text"])
-                labels_list.append(d["labels"])
-    val_data = [text_list, labels_list]
-    val_loss, val_acc = validate(model, val_data,tokenizer, use_cuda, device)
+                text_list_val.append(d["text"])
+                labels_list_val.append(d["labels"])
+    val_data = [text_list_val, labels_list_val]
+    val_data_len = len(val_data[0])
+    val_data = Dataset(val_data, tokenizer)
+
+    val_dataloader = torch.utils.data.DataLoader(val_data, batch_size=4)
+    #val_loss, val_acc = validate(model, val_dataloader, data_len, tokenizer, use_cuda, device)
+
+
+    train_loss, train_acc, valid_acc_ls, val_acc = train_model(steps, envs, model, val_dataloader, val_data_len, tokenizer, optimizer, args, args.method)
+
+
+    if(len(valid_acc_ls) > 0):
+        train_history = pd.DataFrame(list(zip(train_loss, train_acc, valid_acc_ls)), columns = ["Loss", "Train Accuracy", "Validation Accuracy"])
+    else:
+        train_history = pd.DataFrame(list(zip(train_loss, train_acc)), columns = ["Loss", "Accuracy"])    
+
         
         
     all_test_text = []
