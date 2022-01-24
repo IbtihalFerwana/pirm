@@ -125,6 +125,8 @@ def validate(model, val_data, tokenizer, use_cuda, device):
         
         acc = (output.argmax(dim=1) == val_label).sum().item()
         total_acc_val += acc
+
+    print(f'Validation Accuracy: {total_acc_val / len(data_len): .3f}')    
     return  total_loss_val/data_len, total_acc_val/data_len
 
 def penalty(logits, y, criterion):
