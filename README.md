@@ -1,7 +1,12 @@
-### To run this branch for IRM code for BERT model:
-1. get the dataset from: `IRM/code/time_embeddings/sciERC_temporal` folder in gdrive
-2. use the running_examples.ipynb as a guidance for running the irm script
-3. you can try different IRM penalty/regularizer values
+### updates
+1. one can choose the batch size from arguments
+2. This only works for samples size of 600 for envs [1980-1999, 2010-2016]
+
+### Example
+`!python train_model_script.py --batch_size 4 --training_years 1980 1990 --method "erm" --testing_years 2010 2015 --data_dir 'sciERC_temporal' --epochs 1 --output_file 'test_irm_model_2010_2016.csv'`
+
+### TODO:
+1. augmentation should happen in the data splitting
 
 #### Time periods are defined as following (same for erm):
 `input value` --> `included years`
