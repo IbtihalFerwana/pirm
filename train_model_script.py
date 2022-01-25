@@ -150,7 +150,7 @@ def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, o
     l2_regularizer_weight = args.l2_regularizer
     p_weight = args.penalty_weight
     penalty_anneal_iters = args.penalty_anneal_iters
-    
+
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     
@@ -166,8 +166,8 @@ def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, o
 
     
     dataloaders = [envs[i]["dataloader"] for i in range(len(envs))]
+    
     d_num = len(dataloaders)
-
     
     val_acc_ls = []
     train_acc_ls = []
@@ -177,7 +177,7 @@ def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, o
     
     for epoch in range(epochs):
         iters = [iter(d) for d in dataloaders]
-
+        
         val_acc_ls_epoch = []
         train_acc_ls_epoch = []
         train_loss_ls_epoch = []
@@ -190,6 +190,7 @@ def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, o
             print("Training Begins")    
             print("Method: ", args.method)
             print("Information Bottleneck Penalty: ", args.ib_lambda > 0)
+            print("batch size: ", args.batch_size)
 
         print("Epoch: ", epoch, ", Number of Iterations: ", steps)    
         
@@ -197,7 +198,6 @@ def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, o
             # print("Step: ", step)
 
             for i in range(d_num):
-
 
                 t1 = iters[i].next()
                 train_label_0 = t1[1]
@@ -319,6 +319,7 @@ if __name__ == "__main__":
     parser.add_argument('--ib_lambda',  type = float, default = 0.1 , help='IB penalty weight')
     parser.add_argument('--class_condition',  type = float, default = False , help='IB penalty classwise application')
     parser.add_argument('--ib_step',  type = int, default = 10 , help='penalty_anneal_iters for IB')
+    parser.add_argument('--batch_size', type=int, default=2, help='batch size')
 
     
     args = parser.parse_args()
@@ -328,6 +329,7 @@ if __name__ == "__main__":
     data_dir = args.data_dir
     output_file = args.output_file
     learning_rate = args.learning_rate
+    batch_size = args.batch_size
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -341,7 +343,6 @@ if __name__ == "__main__":
     
     criterion = nn.CrossEntropyLoss()
 
-    # num_batches = [2,3]
 
     #### read data
     
@@ -370,18 +371,39 @@ if __name__ == "__main__":
 
                 text_list.append(d["text"])
                 labels_list.append(d["labels"])
+        
+        if len(text_list) < 600:
+            unique_labels = sorted(set(labels_list))
+            labels_freq = [0 for i in range(len(unique_labels))]
+            for label in labels_list:
+                labels_freq[label] +=1
+            perc_freq = [i/len(labels_list) for i in labels_freq]
+            label_samples = [int(i*200) for i in perc_freq]
+            
+            arr_lbs = np.array(labels_list)
+            arr_txts = np.array(text_list)
+            for i, samp in enumerate(label_samples):
+                examples_i = np.where(arr_lbs==i)
+                selected_labels_i = np.random.choice(arr_lbs[examples_i], size=samp)
+                selected_text_i = np.random.choice(arr_txts[examples_i], size=samp)
+                text_list.extend(selected_text_i)
+                labels_list.extend(selected_labels_i)
+            # remaining (random)
+            if sum(label_samples) != 200:
+                rem = 200-sum(label_samples)
+            selected_labels_i = np.random.choice(arr_lbs, size=rem)
+            selected_text_i = np.random.choice(arr_txts, size=rem)
+            text_list.extend(selected_text_i)
+            labels_list.extend(selected_labels_i)
+
+        print("env size: ", len(text_list))
         training_data.append(text_list)
         training_label.append(labels_list)
-        lengths.append(len(text_list))
+            
 
-        print(len(text_list))
-        
         g_val = glob.glob("{}/dev/{}*".format(data_dir, yr))
         val_files.append(g_val[0])
-        
-    gcd_num = int(np.gcd.reduce(lengths))
-    batch_sizes = ((np.array(lengths)/gcd_num))*2
-    batch_sizes = [int(i) for i in batch_sizes]
+    
     dataloaders = []
 
     #### build train environments
@@ -390,11 +412,10 @@ if __name__ == "__main__":
 
     i = 0
 
-    for text_list, labels_list, bs in zip(training_data, training_label, batch_sizes):
-
+    for text_list, labels_list in zip(training_data, training_label):
         train_data = [text_list, labels_list]
         train = Dataset(train_data, tokenizer)
-        train_dataloader = torch.utils.data.DataLoader(train, batch_size=bs, shuffle=True)
+        train_dataloader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=True)
         envs[i]["dataloader"] = train_dataloader
 
         envs[i]["train"] = True
@@ -404,7 +425,7 @@ if __name__ == "__main__":
     
     # envs = envs + valid_envs    
 
-    steps = gcd_num//2
+    steps = 600//batch_size
     text_list_val = []
     labels_list_val = []
 
