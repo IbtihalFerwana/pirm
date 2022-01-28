@@ -69,34 +69,37 @@ class BertClassifier(torch.nn.Module):
         else:
             return linear_output, inter
         
-def evaluate(model, test_data, tokenizer, use_cuda, device):
 
-    test = Dataset(test_data, tokenizer)
+# def evaluate(model, test_data, tokenizer, use_cuda, device):
 
-    test_dataloader = torch.utils.data.DataLoader(test, batch_size=2)
+#     test = Dataset(test_data, tokenizer)
 
-    if use_cuda:
+#     test_dataloader = torch.utils.data.DataLoader(test, batch_size=2)
 
-        model = model.cuda()
+#     if use_cuda:
 
-    total_acc_test = 0
-    with torch.no_grad():
+#         model = model.cuda()
+#         model.eval()
 
-        for test_input, test_label in test_dataloader:
+#     total_acc_test = 0
+#     with torch.no_grad():
 
-            test_label = test_label.to(device)
-            mask = test_input['attention_mask'].to(device)
-            input_id = test_input['input_ids'].squeeze(1).to(device)
+#         for test_input, test_label in test_dataloader:
 
-            output = model(input_id, mask)
+#             test_label = test_label.to(device)
+#             mask = test_input['attention_mask'].to(device)
+#             input_id = test_input['input_ids'].squeeze(1).to(device)
 
-            acc = (output.argmax(dim=1) == test_label).sum().item()
-            total_acc_test += acc
+#             output = model(input_id, mask)
+
+#             acc = (output.argmax(dim=1) == test_label).sum().item()
+#             total_acc_test += acc
     
-    print(f'Test Accuracy: {total_acc_test / len(test_data[1]): .3f}')
-    return total_acc_test / len(test_data[1])
+#     print(f'Test Accuracy: {total_acc_test / len(test_data[1]): .3f}')
+#     return total_acc_test / len(test_data[1])
+
     
-def validate(model, val_loader, data_len, tokenizer, use_cuda, device):
+def evaluate(model, val_loader, tokenizer, use_cuda):
     
     #data_len = len(val_data[0])
     #val_data = Dataset(val_data, tokenizer)
@@ -107,9 +110,12 @@ def validate(model, val_loader, data_len, tokenizer, use_cuda, device):
     if use_cuda:
         model = model.cuda()
     
+    model.eval()
+    
     
     total_acc_val = 0
     total_loss_val = 0
+    sample_count = 0
 
     with torch.no_grad():
 
@@ -122,13 +128,15 @@ def validate(model, val_loader, data_len, tokenizer, use_cuda, device):
         output = model(input_id, mask)
 
         batch_loss = criterion(output, val_label)
-        total_loss_val += batch_loss.item()
+        total_loss_val += batch_loss.item()*val_label.size(0)
         
         acc = (output.argmax(dim=1) == val_label).sum().item()
         total_acc_val += acc
+        sample_count += val_label.size(0) 
 
-    print(f'Validation Accuracy: {total_acc_val / data_len: .3f}')    
-    return  total_loss_val/data_len, total_acc_val/data_len
+    #print(f'Validation Accuracy: {total_acc_val / sample_count: .3f}')    
+    return  total_loss_val/sample_count, total_acc_val/sample_count
+
 
 def penalty(logits, y, criterion):
     scale = torch.tensor(1.).cuda().requires_grad_()
@@ -139,13 +147,12 @@ def penalty(logits, y, criterion):
 
 def mean_accuracy(logits, y):
 
-
     acc = (logits.argmax(dim=1) == y).int().float().mean()
     return acc    
 
 
 
-def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, optim, args, method='erm'):
+def train_model(n_steps, envs, model, val_dataloader, tokenizer, optim, args, method='erm'):
 
     l2_regularizer_weight = args.l2_regularizer
     p_weight = args.penalty_weight
@@ -170,11 +177,14 @@ def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, o
     d_num = len(dataloaders)
     
     val_acc_ls = []
+    val_loss_ls = []
     train_acc_ls = []
     train_loss_ls = [] 
 
     print("number of envs: ", d_num)
     
+    model.train()
+
     for epoch in range(epochs):
         iters = [iter(d) for d in dataloaders]
         
@@ -199,43 +209,39 @@ def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, o
 
             for i in range(d_num):
 
-                t1 = iters[i].next()
-                train_label_0 = t1[1]
-                train_input_0 = t1[0]
+                #t1 = iters[i].next()
+                ### resample if needed
+                try:
+                    current_batch = next(iters[i])
+                except StopIteration:
+
+                    iters[i] = iter(dataloaders[i])
+                    current_batch = next(iters[i])
+
+                train_label_0 = current_batch[1]
+                train_input_0 = current_batch[0]
                 train_label = train_label_0.to(device)
                 mask = train_input_0['attention_mask'].to(device)
                 input_id = train_input_0['input_ids'].squeeze(1).to(device)
 
-                if envs[i]["train"] == False:
-    
-                    logits = model(input_id, mask, 0)
-
-                    envs[i]['acc'] = mean_accuracy(logits, train_label)
-                    val_acc_ls.append(envs[i]['acc'])
-                    val_acc_ls_epoch.append(envs[i]['acc'])
-
+                if args.inter != 0:
+                    logits, inter_logits = model(input_id, mask, args.inter)
                 else:
-               
-                    if args.inter != 0:
-                        logits, inter_logits = model(input_id, mask, args.inter)
+                    logits = model(input_id, mask)
+
+                #env['nll'] = mean_nll(logits, env['labels'][val_size:])
+                envs[i]['loss'] = criterion(logits, train_label)
+                envs[i]['acc'] = mean_accuracy(logits, train_label)
+                envs[i]['penalty'] = penalty(logits, train_label, criterion)
+                
+                if args.ib_lambda > 0.:
+                    if args.class_condition:
+                        num_classes = args.num_classes
+                        index = [train_label.squeeze() == j for j in range(num_classes)]
+                        envs[i]['var'] = sum(inter_logits[ind].var(dim=0).mean() for ind in index)
+                        envs[i]['var'] /= num_classes
                     else:
-                        logits = model(input_id, mask)
-
-                    #env['nll'] = mean_nll(logits, env['labels'][val_size:])
-                    envs[i]['loss'] = criterion(logits, train_label)
-                    envs[i]['acc'] = mean_accuracy(logits, train_label)
-                    envs[i]['penalty'] = penalty(logits, train_label, criterion)
-                    
-                    
-
-                    if args.ib_lambda > 0.:
-                        if args.class_condition:
-                            num_classes = args.num_classes
-                            index = [train_label.squeeze() == j for j in range(num_classes)]
-                            envs[i]['var'] = sum(inter_logits[ind].var(dim=0).mean() for ind in index)
-                            envs[i]['var'] /= num_classes
-                        else:
-                            envs[i]['var'] = inter_logits.var(dim=0).mean()
+                        envs[i]['var'] = inter_logits.var(dim=0).mean()
 
 
             train_loss = torch.stack([envs[i]['loss'] for i in range(d_num) if envs[i]['train']==True]).mean()
@@ -287,18 +293,24 @@ def train_model(n_steps, envs, model, val_dataloader, val_data_len, tokenizer, o
                             Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f}')
 
         
-        val_loss, val_acc = validate(model, val_dataloader, val_data_len, tokenizer, use_cuda, device)
+        train_loss_ls.append(sum(train_loss_ls_epoch)/len(train_loss_ls_epoch))
+        train_acc_ls.append(sum(train_acc_ls_epoch)/len(train_acc_ls_epoch))
+        
 
-        if len(val_acc_ls) > 0:
-            print(f'Epoch: {epoch} | Training Loss: {sum(train_loss_ls_epoch)/len(train_loss_ls_epoch):.3f} | \
-                        Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f} | \
-                        Val Accuracy: {sum(val_acc_ls_epoch)/len(val_acc_ls_epoch):.3f}')
-        else:
-            print(f'Epoch: {epoch} | Training Loss: {sum(train_loss_ls_epoch)/len(train_loss_ls_epoch):.3f} | \
-                        Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f}')
-            
+        ### validate model
+        val_loss, val_acc = evaluate(model, val_dataloader, tokenizer, use_cuda)
+        val_loss_ls.append(val_loss)
+        val_acc_ls.append(val_acc)
 
-    return train_loss_ls, train_acc_ls, val_acc_ls, val_acc     
+        model.train()
+
+        
+        print(f'Epoch: {epoch} | Training Loss: {sum(train_loss_ls_epoch)/len(train_loss_ls_epoch):.3f} | \
+                    Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f} | \
+                    Validation Loss: {val_loss:.3f} | Val Accuracy: {val_acc:.3f} |')
+    
+
+    return train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls     
         
 
 
@@ -319,7 +331,7 @@ if __name__ == "__main__":
     parser.add_argument('--ib_lambda',  type = float, default = 0.1 , help='IB penalty weight')
     parser.add_argument('--class_condition',  type = float, default = False , help='IB penalty classwise application')
     parser.add_argument('--ib_step',  type = int, default = 10 , help='penalty_anneal_iters for IB')
-    parser.add_argument('--batch_size', type=int, default=2, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=4, help='batch size')
 
     
     args = parser.parse_args()
@@ -356,7 +368,8 @@ if __name__ == "__main__":
     tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
     model = model.cuda()
     optimizer = Adam(model.parameters(), lr= learning_rate, eps=1e-08)
-    
+    env_sizes = []
+
     for i, yr in enumerate(training_years): 
         print(yr)
         
@@ -372,31 +385,33 @@ if __name__ == "__main__":
                 text_list.append(d["text"])
                 labels_list.append(d["labels"])
         
-        if len(text_list) < 600:
-            unique_labels = sorted(set(labels_list))
-            labels_freq = [0 for i in range(len(unique_labels))]
-            for label in labels_list:
-                labels_freq[label] +=1
-            perc_freq = [i/len(labels_list) for i in labels_freq]
-            label_samples = [int(i*200) for i in perc_freq]
+        # if len(text_list) < 600:
+        #     unique_labels = sorted(set(labels_list))
+        #     labels_freq = [0 for i in range(len(unique_labels))]
+        #     for label in labels_list:
+        #         labels_freq[label] +=1
+        #     perc_freq = [i/len(labels_list) for i in labels_freq]
+        #     label_samples = [int(i*200) for i in perc_freq]
             
-            arr_lbs = np.array(labels_list)
-            arr_txts = np.array(text_list)
-            for i, samp in enumerate(label_samples):
-                examples_i = np.where(arr_lbs==i)
-                selected_labels_i = np.random.choice(arr_lbs[examples_i], size=samp)
-                selected_text_i = np.random.choice(arr_txts[examples_i], size=samp)
-                text_list.extend(selected_text_i)
-                labels_list.extend(selected_labels_i)
-            # remaining (random)
-            if sum(label_samples) != 200:
-                rem = 200-sum(label_samples)
-            selected_labels_i = np.random.choice(arr_lbs, size=rem)
-            selected_text_i = np.random.choice(arr_txts, size=rem)
-            text_list.extend(selected_text_i)
-            labels_list.extend(selected_labels_i)
+        #     arr_lbs = np.array(labels_list)
+        #     arr_txts = np.array(text_list)
+        #     for i, samp in enumerate(label_samples):
+        #         examples_i = np.where(arr_lbs==i)
+        #         selected_labels_i = np.random.choice(arr_lbs[examples_i], size=samp)
+        #         selected_text_i = np.random.choice(arr_txts[examples_i], size=samp)
+        #         text_list.extend(selected_text_i)
+        #         labels_list.extend(selected_labels_i)
+        #     # remaining (random)
+        #     if sum(label_samples) != 200:
+        #         rem = 200-sum(label_samples)
+        #     selected_labels_i = np.random.choice(arr_lbs, size=rem)
+        #     selected_text_i = np.random.choice(arr_txts, size=rem)
+        #     text_list.extend(selected_text_i)
+        #     labels_list.extend(selected_labels_i)
 
         print("env size: ", len(text_list))
+        env_sizes.append(len(text_list))
+
         training_data.append(text_list)
         training_label.append(labels_list)
             
@@ -404,8 +419,6 @@ if __name__ == "__main__":
         g_val = glob.glob("{}/dev/{}*".format(data_dir, yr))
         val_files.append(g_val[0])
     
-    dataloaders = []
-
     #### build train environments
 
     envs = [{} for i in range(len(training_data))]
@@ -419,13 +432,15 @@ if __name__ == "__main__":
         envs[i]["dataloader"] = train_dataloader
 
         envs[i]["train"] = True
+        envs[i]["year"] = training_years[i]
         i+=1
 
     #### add validation environments here
     
     # envs = envs + valid_envs    
 
-    steps = 600//batch_size
+    steps = np.max(env_sizes)//batch_size
+
     text_list_val = []
     labels_list_val = []
 
@@ -437,26 +452,59 @@ if __name__ == "__main__":
                 text_list_val.append(d["text"])
                 labels_list_val.append(d["labels"])
     val_data = [text_list_val, labels_list_val]
-    val_data_len = len(val_data[0])
     val_data = Dataset(val_data, tokenizer)
 
-    val_dataloader = torch.utils.data.DataLoader(val_data, batch_size=4)
+    val_dataloader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
     #val_loss, val_acc = validate(model, val_dataloader, data_len, tokenizer, use_cuda, device)
 
 
-    train_loss, train_acc, valid_acc_ls, val_acc = train_model(steps, envs, model, val_dataloader, val_data_len, tokenizer, optimizer, args, args.method)
+    train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls = train_model(steps, envs, model, val_dataloader, tokenizer, optimizer, args, args.method)
 
 
-    if(len(valid_acc_ls) > 0):
-        train_history = pd.DataFrame(list(zip(train_loss, train_acc, valid_acc_ls)), columns = ["Loss", "Train Accuracy", "Validation Accuracy"])
+    if(len(val_acc_ls) > 0):
+        train_history = pd.DataFrame(list(zip(train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls)), \
+                                                    columns = ["Train Loss", "Train Accuracy", "Validation Loss", "Validation Accuracy"])
     else:
-        train_history = pd.DataFrame(list(zip(train_loss, train_acc)), columns = ["Loss", "Accuracy"])    
+        train_history = pd.DataFrame(list(zip(train_loss_ls, train_acc_ls)), columns = ["Loss", "Accuracy"])    
 
         
         
-    all_test_text = []
-    all_test_label = []
+    #all_test_text = []
+    #all_test_label = []
     # testing_all_years = ",".join(testing_years)
+
+    ### get final training accuracy
+
+    overall_count = 0
+    overall_acc = 0
+
+    for env in envs:
+        
+        train_loss, train_acc = evaluate(model, env["dataloader"], tokenizer, use_cuda)
+        env_len = len(env["dataloader"].dataset)
+
+        overall_count += env_len
+        overall_acc += env_len*train_acc 
+
+        d = {"train_period":env["year"],"train_accuracy":train_acc}
+        print(d)
+        #all_res.append(d)
+    
+    # all periods tested together (overall accuracy)
+    if len(envs) > 1:
+        print("all training periods")
+
+        d = {"train_period":','.join([env["year"] for env in envs]), "train_acc":overall_acc/overall_count}
+        print(d)
+        #all_res.append(d)
+
+
+
+    ### get final testing accuracy
+
+    overall_count = 0
+    overall_acc = 0
+
     for yr_test in testing_years:
         g = glob.glob("{}/test/{}*".format(data_dir,yr_test))
 
@@ -477,24 +525,34 @@ if __name__ == "__main__":
                 test_labels_list.append(d["labels"])
         test_data = [test_text_list, test_labels_list]
         
-        all_test_text.extend(test_text_list)
-        all_test_label.extend(test_labels_list)
-        
-        test_acc = evaluate(model, test_data,tokenizer, use_cuda, device)
+        #all_test_text.extend(test_text_list)
+        #all_test_label.extend(test_labels_list)
 
-        d = {"train_period":train_period,"train_acc": sum(train_acc)/len(train_acc), "val_acc": val_acc, "test_period":yr_test,"test_acc":test_acc}
-        all_res.append(d)
+        test_data = Dataset(test_data, tokenizer)
+
+        test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=batch_size)
+        
+        test_loss, test_acc = evaluate(model, test_dataloader, tokenizer, use_cuda)
+        env_len = len(test_labels_list)
+
+        overall_count += env_len
+        overall_acc += env_len*test_acc 
+
+        d = {"test_period":yr_test,"test_acc":test_acc}
+        print(d)
+        #all_res.append(d)
     
     # all periods tested together (overall accuracy)
     if len(testing_years) > 1:
-        test_data = [all_test_text, all_test_label]
+        #test_data = [all_test_text, all_test_label]
         print("all testing periods")
-        test_acc = evaluate(model, test_data,tokenizer, use_cuda, device)
+        #test_acc = evaluate(model, test_data,tokenizer, use_cuda, device)
 
-        d = {"train_period":train_period, "train_acc": sum(train_acc)/len(train_acc), "val_acc": val_acc, "test_period":','.join(testing_years), "test_acc":test_acc}
-        all_res.append(d)
+        d = {"test_period":','.join(testing_years), "test_acc":overall_acc/overall_count}
+        print(d)
+        #all_res.append(d)
     
-    pd.DataFrame(all_res).to_csv(output_file+"_combinded.csv")
+    #pd.DataFrame(all_res).to_csv(output_file+"_combinded.csv")
     pd.DataFrame(train_history).to_csv(output_file+"_train_history.csv")
 
     
