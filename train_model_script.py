@@ -152,7 +152,7 @@ def mean_accuracy(logits, y):
 
 
 
-def train_model(n_steps, envs, model, val_dataloader, tokenizer, optim, args, method='erm'):
+def train_model(n_steps, envs, model, val_dataloaders, tokenizer, optim, args, method='erm'):
 
     l2_regularizer_weight = args.l2_regularizer
     p_weight = args.penalty_weight
@@ -298,16 +298,21 @@ def train_model(n_steps, envs, model, val_dataloader, tokenizer, optim, args, me
         
 
         ### validate model
-        val_loss, val_acc = evaluate(model, val_dataloader, tokenizer, use_cuda)
-        val_loss_ls.append(val_loss)
-        val_acc_ls.append(val_acc)
+        epoch_val_acc = []
+        
+        for val_dataloader in val_dataloaders:
+            val_loss, val_acc = evaluate(model, val_dataloader, tokenizer, use_cuda)
+            # val_loss_ls.append(val_loss)
+            # val_acc_ls.append(val_acc)
+            epoch_val_acc.append(val_acc)
 
         model.train()
 
         
         print(f'Epoch: {epoch} | Training Loss: {sum(train_loss_ls_epoch)/len(train_loss_ls_epoch):.3f} | \
-                    Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f} | \
-                    Validation Loss: {val_loss:.3f} | Val Accuracy: {val_acc:.3f} |')
+                    Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f}')
+        for i, val_acc_i in enumerate(epoch_val_acc):
+            print(f'Validation Accuracy for env # {i}: {val_acc_i:.3f} ')
     
 
     return train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls     
@@ -441,24 +446,26 @@ if __name__ == "__main__":
 
     steps = np.max(env_sizes)//batch_size
 
-    text_list_val = []
-    labels_list_val = []
-
+    
+    val_dataloaders = []
     for val_file in val_files:
+        text_list_val = []
+        labels_list_val = []
         with open(val_file, 'r') as f:
             lines = f.readlines()
             for line in lines:
                 d = json.loads(line)
                 text_list_val.append(d["text"])
                 labels_list_val.append(d["labels"])
-    val_data = [text_list_val, labels_list_val]
-    val_data = Dataset(val_data, tokenizer)
-
-    val_dataloader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
+        val_data = [text_list_val, labels_list_val]
+        val_data = Dataset(val_data, tokenizer)
+    
+        val_dataloader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
+        val_dataloaders.append(val_dataloader)
     #val_loss, val_acc = validate(model, val_dataloader, data_len, tokenizer, use_cuda, device)
 
 
-    train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls = train_model(steps, envs, model, val_dataloader, tokenizer, optimizer, args, args.method)
+    train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls = train_model(steps, envs, model, val_dataloaders, tokenizer, optimizer, args, args.method)
 
 
     if(len(val_acc_ls) > 0):
