@@ -1,7 +1,7 @@
 import pandas as pd
 import torch
 import numpy as np
-from transformers import BertTokenizer, BertModel
+from transformers import BertTokenizer, BertModel, DistilBertTokenizer, DistilBertModel
 from torch import nn
 from torch.optim import Adam
 from tqdm import tqdm
@@ -10,6 +10,7 @@ import glob
 from torch import autograd
 import time
 import argparse
+import random
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -56,6 +57,34 @@ class BertClassifier(torch.nn.Module):
     def forward(self, input_id, mask, ret_rep = 0):
 
         _, pooled_output = self.bert(input_ids= input_id, attention_mask=mask,return_dict=False)
+        if(ret_rep == 2):
+            inter = pooled_output
+        dropout_output = self.dropout(pooled_output)
+        linear_output = self.linear(dropout_output)
+        if(ret_rep == 1):
+            inter = linear_output
+        #final_layer = self.relu(linear_output)
+
+        if(ret_rep == 0):
+            return linear_output
+        else:
+            return linear_output, inter
+class DistilBertClassifier(torch.nn.Module):
+
+    def __init__(self, dropout=0.5):
+
+        super(DistilBertClassifier, self).__init__()
+
+        self.bert = DistilBertModel.from_pretrained('distilbert-base-cased')
+        self.dropout = nn.Dropout(dropout)
+        self.linear = nn.Linear(768, 6)
+        #self.relu = nn.ReLU()
+
+    def forward(self, input_id, mask, ret_rep = 0):
+
+        output1 = self.bert(input_ids= input_id, attention_mask=mask,return_dict=False)
+        hidden_state = output1[0]
+        pooled_output = hidden_state[:, 0]
         if(ret_rep == 2):
             inter = pooled_output
         dropout_output = self.dropout(pooled_output)
@@ -182,6 +211,8 @@ def train_model(n_steps, envs, model, val_dataloaders, tokenizer, optim, args, m
     train_loss_ls = [] 
 
     print("number of envs: ", d_num)
+    max_val = 0
+    model_path = args.model_path
     
     model.train()
 
@@ -250,7 +281,7 @@ def train_model(n_steps, envs, model, val_dataloaders, tokenizer, optim, args, m
             train_acc = torch.stack([envs[i]['acc'] for i in range(d_num) if envs[i]['train']==True]).mean()
 
             train_acc_ls_epoch.append(train_acc.item())
-            train_acc_ls.append(train_acc.item())
+            # train_acc_ls.append(train_acc.item())
 
         
             weight_norm = torch.tensor(0.).cuda()
@@ -293,18 +324,72 @@ def train_model(n_steps, envs, model, val_dataloaders, tokenizer, optim, args, m
                             Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f}')
 
         
-        train_loss_ls.append(sum(train_loss_ls_epoch)/len(train_loss_ls_epoch))
-        train_acc_ls.append(sum(train_acc_ls_epoch)/len(train_acc_ls_epoch))
+        
+        epoch_train_loss = sum(train_loss_ls_epoch)/len(train_loss_ls_epoch)
+        epoch_train_acc = sum(train_acc_ls_epoch)/len(train_acc_ls_epoch)
+        
+        train_loss_ls.append(epoch_train_loss)
+        train_acc_ls.append(epoch_train_acc)
+
+        print("###### traing acc: ",epoch_train_acc)
         
 
         ### validate model
         epoch_val_acc = []
+        epoch_val_loss = []
         
         for val_dataloader in val_dataloaders:
             val_loss, val_acc = evaluate(model, val_dataloader, tokenizer, use_cuda)
-            # val_loss_ls.append(val_loss)
-            # val_acc_ls.append(val_acc)
+            epoch_val_loss.append(val_loss)
             epoch_val_acc.append(val_acc)
+        avg_val = np.mean(epoch_val_acc)
+        avg_loss = np.mean(epoch_val_loss)
+        val_acc_ls.append(avg_val)
+        val_loss_ls.append(np.mean(epoch_val_loss))
+        output_cols = []
+        if (avg_val - 0.01) > max_val:
+            max_val = avg_val
+            model_path_pt = model_path+ '_checkpoint.pt'
+            torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': avg_loss,
+            }, model_path_pt)
+            if(len(epoch_val_acc) > 0):
+                envs_cols = [epoch_train_loss,epoch_train_acc]
+                envs_cols_names = ["train_loss", "train_acc"]
+                
+                for jj in range(len(epoch_val_acc)):
+                    envs_cols_names.append("val_loss_env_{}".format(jj))
+                    envs_cols_names.append("val_acc_env_{}".format(jj))
+                    envs_cols.append(epoch_val_loss[jj])
+                    envs_cols.append(epoch_val_acc[jj])
+                    
+                best_results = pd.DataFrame(envs_cols, index=envs_cols_names).T
+            else:
+                envs_cols = [epoch_train_loss,epoch_train_acc]
+                envs_cols_names = ["train_loss", "train_acc"]
+                best_results = pd.DataFrame(envs_cols, index=envs_cols_names).T
+        if epoch == 0:
+            if len(epoch_val_acc) == 2:
+                all_env_val_acc = [[],[]]
+                all_env_val_loss = [[],[]]
+            elif len(epoch_val_acc) == 4:
+                all_env_val_acc = [[],[],[],[]]
+                all_env_val_loss = [[],[],[],[]]
+            if(len(epoch_val_acc) > 0):                
+                for jj in range(len(epoch_val_acc)):
+                    all_env_val_loss[jj].append(epoch_val_loss[jj])
+                    all_env_val_acc[jj].append(epoch_val_acc[jj])
+        else:
+            if(len(epoch_val_acc) > 0):                
+                for jj in range(len(epoch_val_acc)):
+                    print("env: ", epoch_val_loss)
+                    print("env epoch val: ", epoch_val_loss[jj])
+                    all_env_val_loss[jj].append(epoch_val_loss[jj])
+                    all_env_val_acc[jj].append(epoch_val_acc[jj])
+
 
         model.train()
 
@@ -313,9 +398,10 @@ def train_model(n_steps, envs, model, val_dataloaders, tokenizer, optim, args, m
                     Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f}')
         for i, val_acc_i in enumerate(epoch_val_acc):
             print(f'Validation Accuracy for env # {i}: {val_acc_i:.3f} ')
+        
     
 
-    return train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls     
+    return train_loss_ls, train_acc_ls, all_env_val_loss, all_env_val_acc, best_results
         
 
 
@@ -337,6 +423,9 @@ if __name__ == "__main__":
     parser.add_argument('--class_condition',  type = float, default = False , help='IB penalty classwise application')
     parser.add_argument('--ib_step',  type = int, default = 10 , help='penalty_anneal_iters for IB')
     parser.add_argument('--batch_size', type=int, default=4, help='batch size')
+    parser.add_argument('--model_path', type=str, default='saved_models/', help='checkpoints')
+    parser.add_argument('--seed', type=int, default=0, help='seed number')
+    parser.add_argument('--model', type=str, default='bert', help='language model for finetuning, bert or distilbert')
 
     
     args = parser.parse_args()
@@ -347,6 +436,7 @@ if __name__ == "__main__":
     output_file = args.output_file
     learning_rate = args.learning_rate
     batch_size = args.batch_size
+    model_name = args.model
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -355,12 +445,13 @@ if __name__ == "__main__":
     stime = time.time()
     files = []
     val_files = []
-    all_res = []
+    test_res = []
     dataloaders = []
     
     criterion = nn.CrossEntropyLoss()
 
 
+    random.seed(args.seed)
     #### read data
     
     training_data = []
@@ -369,8 +460,16 @@ if __name__ == "__main__":
     val_files = []
 
     train_period = '_'.join(training_years)
-    model = BertClassifier()
-    tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
+    if model_name == 'bert':
+        model = BertClassifier()
+        tokenizer_name = 'bert-base-cased'
+    elif model_name == 'distilbert':
+        model = DistilBertClassifier()
+        tokenizer_name = 'distilbert-base-cased'
+    else:
+        raise NotImplementedError
+    tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
+
     model = model.cuda()
     optimizer = Adam(model.parameters(), lr= learning_rate, eps=1e-08)
     env_sizes = []
@@ -389,30 +488,6 @@ if __name__ == "__main__":
 
                 text_list.append(d["text"])
                 labels_list.append(d["labels"])
-        
-        # if len(text_list) < 600:
-        #     unique_labels = sorted(set(labels_list))
-        #     labels_freq = [0 for i in range(len(unique_labels))]
-        #     for label in labels_list:
-        #         labels_freq[label] +=1
-        #     perc_freq = [i/len(labels_list) for i in labels_freq]
-        #     label_samples = [int(i*200) for i in perc_freq]
-            
-        #     arr_lbs = np.array(labels_list)
-        #     arr_txts = np.array(text_list)
-        #     for i, samp in enumerate(label_samples):
-        #         examples_i = np.where(arr_lbs==i)
-        #         selected_labels_i = np.random.choice(arr_lbs[examples_i], size=samp)
-        #         selected_text_i = np.random.choice(arr_txts[examples_i], size=samp)
-        #         text_list.extend(selected_text_i)
-        #         labels_list.extend(selected_labels_i)
-        #     # remaining (random)
-        #     if sum(label_samples) != 200:
-        #         rem = 200-sum(label_samples)
-        #     selected_labels_i = np.random.choice(arr_lbs, size=rem)
-        #     selected_text_i = np.random.choice(arr_txts, size=rem)
-        #     text_list.extend(selected_text_i)
-        #     labels_list.extend(selected_labels_i)
 
         print("env size: ", len(text_list))
         env_sizes.append(len(text_list))
@@ -465,20 +540,30 @@ if __name__ == "__main__":
     #val_loss, val_acc = validate(model, val_dataloader, data_len, tokenizer, use_cuda, device)
 
 
-    train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls = train_model(steps, envs, model, val_dataloaders, tokenizer, optimizer, args, args.method)
+    train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls, best_results = train_model(steps, envs, model, val_dataloaders, tokenizer, optimizer, args, args.method)
 
-
+    
     if(len(val_acc_ls) > 0):
-        train_history = pd.DataFrame(list(zip(train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls)), \
-                                                    columns = ["Train Loss", "Train Accuracy", "Validation Loss", "Validation Accuracy"])
+        cols_name = ["Train Loss", "Train Accuracy"]
+        cols = [train_loss_ls,train_acc_ls]
+        for cc, (env_val_loss, env_val_acc) in enumerate(zip(val_loss_ls, val_acc_ls)):
+            cols.append(env_val_loss)
+            cols.append(env_val_acc)
+            cols_name.append("Validation Loss Env "+str(cc))
+            cols_name.append("Validation Accuracy Env "+str(cc))
+        # train_history = pd.DataFrame(list(zip(cols)), \
+                                                    # columns = cols_name)
+        train_history = pd.DataFrame(cols).T
+        print(train_history)
+        train_history.columns = cols_name
+        
+
+
+        # train_history = pd.DataFrame(list(zip(train_loss_ls, train_acc_ls, val_loss_ls, val_acc_ls)), \
+        #                                             columns = ["Train Loss", "Train Accuracy", "Validation Loss", "Validation Accuracy"])
     else:
         train_history = pd.DataFrame(list(zip(train_loss_ls, train_acc_ls)), columns = ["Loss", "Accuracy"])    
 
-        
-        
-    #all_test_text = []
-    #all_test_label = []
-    # testing_all_years = ",".join(testing_years)
 
     ### get final training accuracy
 
@@ -547,7 +632,7 @@ if __name__ == "__main__":
 
         d = {"test_period":yr_test,"test_acc":test_acc}
         print(d)
-        #all_res.append(d)
+        test_res.append(d)
     
     # all periods tested together (overall accuracy)
     if len(testing_years) > 1:
@@ -557,11 +642,12 @@ if __name__ == "__main__":
 
         d = {"test_period":','.join(testing_years), "test_acc":overall_acc/overall_count}
         print(d)
-        #all_res.append(d)
+        test_res.append(d)
     
     #pd.DataFrame(all_res).to_csv(output_file+"_combinded.csv")
     pd.DataFrame(train_history).to_csv(output_file+"_train_history.csv")
-
+    best_results.to_csv(output_file+"_best_train_val_results.csv")
+    pd.DataFrame(test_res).to_csv(output_file+"_test_results.csv")
     
     etime=time.time()
     print("time: ", (etime-stime)/60)
