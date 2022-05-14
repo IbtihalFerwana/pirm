@@ -14,7 +14,7 @@ import argparse
 import random
 import torch
 import copy
-
+import os
 
 class Dataset(torch.utils.data.Dataset):
 
@@ -257,11 +257,13 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
 
 
             train_loss = torch.stack([envs[i]['loss'] for i in range(d_num) if envs[i]['train']==True]).mean()
-            train_loss_ls_epoch.append(train_loss.item())
-
+            train_loss_ls_epoch.append(train_loss.item()/len(current_batch[1]))
+            
             train_acc = torch.stack([envs[i]['acc'] for i in range(d_num) if envs[i]['train']==True]).mean()
 
-            train_acc_ls_epoch.append(train_acc.item())
+            # print("train_acc: ", train_acc/len(current_batch[1]))
+            # print()
+            train_acc_ls_epoch.append(train_acc.item()/len(current_batch[1]))
 
         
             weight_norm = torch.tensor(0.).cuda()
@@ -338,8 +340,10 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
         val_min_acc_ls.append(min_val_acc)
         val_loss_ls.append(avg_val_loss)
         
-
-        if ((avg_val_acc - 0.01) > best_model_val) and (epoch > epochs/2) and args.save_best_model:
+        isbest = False
+        # if ((avg_val_acc - 0.01) > best_model_val) and (epoch > epochs/2) and args.save_best_model:
+        # if ((avg_val_acc - 0.01) > best_model_val) and args.save_best_model:
+        if args.save_best_model:
             if method == "irm" and (epoch > penalty_anneal_iters*2):
                 model.to('cpu')  # moves model (its parameters) to cpu
                 best_model_val = avg_val_acc
@@ -349,6 +353,7 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
                                     'validation_acc': best_model_val}
 
                 model.to(device)
+                isbest = True
 
             elif method == "erm":
                 model.to('cpu')  # moves model (its parameters) to cpu
@@ -359,6 +364,7 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
                                     'validation_acc': best_model_val}
 
                 model.to(device)
+                isbest = True
 
 
         model.train()
@@ -371,7 +377,8 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
             print(f'Validation Accuracy: {avg_val_acc:.3f} ')
         
     
-    if args.save_best_model == True:
+    if (args.save_best_model == True) and isbest:
+        print("save model checkpoint")
         PATH = args.model_path+'_best_model_ckpt'
         torch.save(best_model_config, PATH)
         ### load 
@@ -386,9 +393,13 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
     ### log_results_in_dataframe
 
     if args.save_training_history:
+        print("save training history")
         df = pd.DataFrame(list(zip([i+1 for i in range(epochs)], train_loss_ls, train_acc_ls, val_avg_acc_ls, val_min_acc_ls, val_loss_ls)),\
                                 columns =['epochs', 'train_loss', 'train_acc', 'val_avg_acc', 'val_min_acc', 'val_loss'])
-        df.to_pickle(args.model_path+'_training_history')
+        df.to_pickle(args.model_path+'_training_history.pkl')
+        df.to_csv(args.model_path+'_training_history.csv')
+        print(os.getcwd())
+        print(args.model_path+'_training_history.csv')
 
     return train_acc_ls[-1], val_avg_acc_ls[-1], val_min_acc_ls[-1]
         
@@ -551,7 +562,7 @@ if __name__ == "__main__":
         training_label.append(labels_list)
             
 
-        g_val = glob.glob("{}/{}/val/{}*".format(data_dir, data_split, yr))
+        g_val = glob.glob("{}/{}/dev/{}*".format(data_dir, data_split, yr))
         val_files.append(g_val[0])
     
     #### build train environments
@@ -571,10 +582,9 @@ if __name__ == "__main__":
         i+=1
 
     #### add validation environments here
-    
     steps = np.max(env_sizes)//batch_size
 
-    
+    i = 0
     for val_file in val_files:
         text_list_val = []
         labels_list_val = []
@@ -589,9 +599,11 @@ if __name__ == "__main__":
     
         val_dataloader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
         envs[i]["val_dataloader"] = val_dataloader
+        i+=1
 
     final_train_acc, final_avg_valid_acc, final_worst_grp_valid_acc = \
-                            train_model(steps, envs, model, tokenizer, optimizer, args, args.method, linear_probing)
+                            train_model(steps, envs, model, optimizer, args, args.method, linear_probing)
+                            # n_steps, envs, model, optim, args, method='erm', linear_probing = False
 
 
     ### if load best model, uncomment below
@@ -609,7 +621,7 @@ if __name__ == "__main__":
 
     for env in envs:
         
-        mean_train_loss, mean_train_acc = evaluate(model, env["train_dataloader"], tokenizer, use_cuda)
+        mean_train_loss, mean_train_acc = evaluate(model, env["train_dataloader"], use_cuda)
 
         training_accs.append(mean_train_acc)
         d = {"train_period":env["year"],"train_accuracy":mean_train_acc}
@@ -689,7 +701,7 @@ if __name__ == "__main__":
 
     df = pd.DataFrame(list(zip(test_years, testing_accs)),\
                                 columns =['test_year', 'test_avg_acc'])
-    df.to_pickle(args.model_path+'_model_test_results')
+    df.to_pickle(args.model_path+'_model_test_results.pkl')
     
     etime=time.time()
     print("time: ", (etime-stime)/60)
