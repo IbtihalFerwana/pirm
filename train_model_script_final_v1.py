@@ -135,7 +135,12 @@ def evaluate(model, val_loader, use_cuda):
         
         acc = (output.argmax(dim=1) == val_label).sum().item()
         total_acc_val += acc
-        sample_count += val_label.size(0) 
+        sample_count += val_label.size(0)
+
+        ### save memory
+        val_label.to("cpu")
+        mask.to("cpu")
+        input_id.to("cpu")
 
     #print(f'Validation Accuracy: {total_acc_val / sample_count: .3f}')    
     return  total_loss_val/sample_count, total_acc_val/sample_count
@@ -247,6 +252,8 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
                 envs[i]['loss'] = criterion(logits, train_label)
                 envs[i]['acc'] = mean_accuracy(logits, train_label)
                 envs[i]['penalty'] = penalty(logits, train_label, criterion)
+
+                              
                 
                 if args.ib_lambda > 0.:
                     if args.class_condition:
@@ -256,6 +263,11 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
                         envs[i]['var'] /= num_classes
                     else:
                         envs[i]['var'] = inter_logits.var(dim=0).mean()
+
+                ### save memory
+                train_label.to("cpu")
+                mask.to("cpu")
+                input_id.to("cpu")  
 
 
             train_loss = torch.stack([envs[i]['loss'] for i in range(d_num) if envs[i]['train']==True]).mean()
