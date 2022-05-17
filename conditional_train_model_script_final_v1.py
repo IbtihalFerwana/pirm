@@ -486,7 +486,6 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=4, help='batch size')
     parser.add_argument('--model_path', type=str, default='saved_models/', help='checkpoints')
     parser.add_argument('--data_split', type=str, default='equal_split', help='define env split')
-    parser.add_argument('--seed', type=int, default=0, help='seed number')
     parser.add_argument('--model', type=str, default='bert', help='language model for finetuning, bert or distilbert')
     parser.add_argument('--linear_probing', type=bool, default=False, help='do linear finetuning')
     parser.add_argument('--lin_epochs', type=int, default=20, help='epochs for linear finetuning')
