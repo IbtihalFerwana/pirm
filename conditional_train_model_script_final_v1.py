@@ -354,7 +354,7 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
         val_loss_ls.append(avg_val_loss)
         
 
-        if ((avg_val_acc - 0.01) > best_model_val) and (epoch >= epochs/2) and args.save_best_model:
+        if ((avg_val_acc) > best_model_val) and (epoch >= epochs/2) and args.save_best_model:
             if method == "irm" and (epoch > penalty_anneal_iters+10):
                 model.to('cpu')  # moves model (its parameters) to cpu
                 best_model_val = avg_val_acc
