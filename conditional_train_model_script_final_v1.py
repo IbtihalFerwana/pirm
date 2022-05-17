@@ -355,7 +355,7 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
         
 
         if ((avg_val_acc - 0.01) > best_model_val) and (epoch >= epochs/2) and args.save_best_model:
-            if method == "irm" and (epoch > penalty_anneal_iters*2):
+            if method == "irm" and (epoch > penalty_anneal_iters+10):
                 model.to('cpu')  # moves model (its parameters) to cpu
                 best_model_val = avg_val_acc
                 #model_path_pt = args.model_path+ '_checkpoint.pt'
