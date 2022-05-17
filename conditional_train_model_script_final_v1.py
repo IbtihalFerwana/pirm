@@ -490,6 +490,7 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, default='bert', help='language model for finetuning, bert or distilbert')
     parser.add_argument('--linear_probing', type=bool, default=False, help='do linear finetuning')
     parser.add_argument('--lin_epochs', type=int, default=20, help='epochs for linear finetuning')
+    parser.add_argument('--seed', type=int, default=0, help='seed for model init')
     parser.add_argument('--save_training_history', type=bool, default=True, help='save stats in dataframe')
     parser.add_argument('--save_best_model', type=bool, default=True, help='save best model weights based on avg validation acc')
     parser.add_argument('--epoch_print_step', type=int, default=1, help='epochs for printing model performance')
@@ -507,6 +508,7 @@ if __name__ == "__main__":
     model_name = args.model
     data_split = args.data_split
     linear_probing = args.linear_probing
+    seed = args.seed
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -521,8 +523,8 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
 
 
-    random.seed(0)
-    torch.manual_seed(0)
+    random.seed(seed)
+    torch.manual_seed(seed)
 
     #### read data
     
