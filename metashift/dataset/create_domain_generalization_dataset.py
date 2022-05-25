@@ -375,6 +375,7 @@ def generate_splitted_metadaset(args):
 
     print('cat images: ', len(cat_images))
     print('dog images: ', len(dog_images))
+    
     print()
     
 
@@ -444,7 +445,8 @@ def generate_splitted_metadaset(args):
     for i,j,z, f in zip(new_sub_comms[idx_disp],disparity[idx_disp], lens[idx_disp], diffs[idx_disp]):
         print(f"{i} | disparity: {j} | size: {z} | diff: {f}")
     
-    test_envs = ["floor","grass"]
+    # test_envs = ["floor","shelf","bag","door"]
+    test_envs = ["fence","shelf","woman","floor"]
     for com in test_envs:
         print(com)
         cat_sub = f'cat({com})'
@@ -464,68 +466,36 @@ def generate_splitted_metadaset(args):
     G_out, animals_outdoor_clusters, adj_training_outdoor = build_subset_graph(sub_outdoor_comms, com_to_img_id, trainsg_dupes=trainsg_dupes, subject_str=None,seed=args.seed)
     # print(G_in.edges(data=True))
     # exit(0)
+    # print("number of communities in env 1: ", len(animals_indoor_clusters[0]), len(animals_indoor_clusters[1]))
+    # print("number of communities in env 2", len(animals_outdoor_clusters[0]), len(animals_outdoor_clusters[1]))
+
+    animals_indoor_clusters = [
+        ['pot', 'curtain', 'chair', 'bottle', 'laptop', 'plate', 'desk',
+       'food', 'television', 'vase', 'screen', 'bowl', 'cup', 'book',
+       'window', 'monitor', 'refrigerator', 'box', 'clock', 'toy', 'door',
+       'cell phone', 'picture', 'phone', 'shelf', 'wall', 'mat', 'drawer',
+       'table', 'toilet', 'coffee table', 'books', 'towel', 'rug',
+       'carpet', 'keyboard', 'cabinet', 'container'],
+        ['pillow', 'lamp', 'sheet', 'blanket', 'remote control', 'pillows',
+       'teddy bear', 'bed', 'comforter', 'couch', 'sofa', 'suitcase']
+       ]
+    animals_outdoor_clusters = [
+        ['collar', 'man', 'glasses', 'purse', 'animal', 'hat', 'horse',
+       'girl', 'bag', 'woman', 'boy', 'ball', 'house', 'ground', 'water',
+       'bench', 'person', 'bird', 'fence', 'lady', 'backpack', 'umbrella',
+       'bicycle'], 
+       ['motorcycle', 'bike', 'car', 'mirror', 'camera', 'seat']
+       ]
+
+    print("FIXED CLUSTERS ")
     print("number of communities in env 1: ", len(animals_indoor_clusters[0]), len(animals_indoor_clusters[1]))
     print("number of communities in env 2", len(animals_outdoor_clusters[0]), len(animals_outdoor_clusters[1]))
+
 
     overlap_len = args.overlap_len
     minority_percentage = args.minority_percentage
 
-    # env 1 partitions
-    p1, p2 = list(animals_indoor_clusters[0]), list(animals_indoor_clusters[1])
-    tmp_p = list(p1)
-    if overlap_len > 0:
-        for i in range(overlap_len):
-            min_cuts = []
-            for pp in tmp_p: 
-                mc = nx.cut_size(G_in, pp,p2,weight='weight')
-                min_cuts.append(mc)
-            max_cut = np.argmax(min_cuts)
-            p2.append(tmp_p[max_cut])
-            tmp_p.pop(max_cut)
-        
-        tmp_p = list(p2)
-        # print("p1 indoor: ", p1)
-        for i in range(overlap_len):
-            min_cuts = []
-            for pp in tmp_p: 
-                mc = nx.cut_size(G_in, pp,p1,weight='weight')
-                min_cuts.append(mc)
-            max_cut = np.argmax(min_cuts)
-            p1.append(tmp_p[max_cut])
-            tmp_p.pop(max_cut)
-        # print("UPDATED --- p1 indoor: ",p1)
-        animals_indoor_clusters = [p1, p2]
-        
-        # env 2 paritions
-        p1, p2 = list(animals_outdoor_clusters[0]), list(animals_outdoor_clusters[1])
-        tmp_p = list(p1)
-        for i in range(overlap_len):
-            min_cuts = []
-            for pp in tmp_p: 
-                mc = nx.cut_size(G_out, pp,p2,weight='weight')
-                min_cuts.append(mc)
-            max_cut = np.argmax(min_cuts)
-            p2.append(tmp_p[max_cut])
-            tmp_p.pop(max_cut)
-        
-        tmp_p = list(p2)
-        # print("p1 indoor: ", p1)
-        for i in range(overlap_len):
-            min_cuts = []
-            for pp in tmp_p: 
-                mc = nx.cut_size(G_out, pp,p1,weight='weight')
-                min_cuts.append(mc)
-            max_cut = np.argmax(min_cuts)
-            p1.append(tmp_p[max_cut])
-            tmp_p.pop(max_cut)
-    # print("UPDATED --- p1 indoor: ",p1)
-        animals_outdoor_clusters = [p1, p2]
     
-    print(animals_indoor_clusters)
-    print(animals_outdoor_clusters)
-    print("number of communities in env 1: ", len(animals_indoor_clusters[0]), len(animals_indoor_clusters[1]))
-    print("number of communities in env 2", len(animals_outdoor_clusters[0]), len(animals_outdoor_clusters[1]))
-
     sub_test_size = 50
     sub_val_prop = 0.3
 
@@ -535,6 +505,7 @@ def generate_splitted_metadaset(args):
     outdoor_partition_dict_test = {}
     indoor_partition_dict_test = {}
 
+    test_ids = []
     for ac, com in enumerate(test_envs):
         sub_cat_imgs = set()
         sub_dog_imgs = set()
@@ -549,17 +520,23 @@ def generate_splitted_metadaset(args):
         sub_dog_imgs.update(sub_dog_imgs-trainsg_dupes-all_dog_test)
         
         cat_test = set(shuffle_and_truncate(sub_cat_imgs,args,sub_test_size))
-        all_cat_test.update(cat_test)
-
         dog_test = set(shuffle_and_truncate(sub_dog_imgs,args,sub_test_size))
+        
+        # min_test = min(len(cat_test),len(dog_test))
+
+        # cat_test = set(shuffle_and_truncate(cat_test,args,min_test))
+        # dog_test = set(shuffle_and_truncate(dog_test,args,min_test))
+        
+        all_cat_test.update(cat_test)
         all_dog_test.update(dog_test)
+
         print("total cats test: ", len(cat_test))
         print("total dogs test: ", len(dog_test))
-        indoor_partition_dict_test[f"cat_p{ac}"] = cat_test
-        indoor_partition_dict_test[f"dog_p{ac}"] = dog_test
+        indoor_partition_dict_test[f"cat_{ac}"] = cat_test
+        indoor_partition_dict_test[f"dog_{ac}"] = dog_test
+        test_ids.append(ac)
 
-        outdoor_partition_dict_test[f"cat_p{ac}"] = cat_test
-        outdoor_partition_dict_test[f"dog_p{ac}"] = dog_test
+       
 
     print("total cats test: ", len(all_cat_test))
     print("total dogs test: ", len(all_dog_test))
@@ -611,7 +588,7 @@ def generate_splitted_metadaset(args):
         cat_val = set(shuffle_and_truncate(sub_cat_imgs-all_cat_train-all_cat_test-all_cat_val,args,sub_val_size))
         all_cat_val.update(cat_val)
 
-        cat_train = set(sub_cat_imgs)-all_cat_test-all_cat_val
+        cat_train = set(sub_cat_imgs)-all_cat_test-all_cat_val-all_cat_train
         
         ### Dogs
         # dog_test = set(shuffle_and_truncate(sub_dog_imgs-all_dog_train-all_dog_test-all_dog_val,args,sub_test_size))
@@ -619,7 +596,7 @@ def generate_splitted_metadaset(args):
         dog_val = set(shuffle_and_truncate(sub_dog_imgs-all_dog_train-all_dog_test-all_dog_val,args,sub_val_size))
         all_dog_val.update(dog_val)
 
-        dog_train = set(sub_dog_imgs)-all_dog_test-all_dog_val
+        dog_train = set(sub_dog_imgs)-all_dog_test-all_dog_val-all_dog_train
 
         min_trunc = min(len(dog_train), len(cat_train))
         cat_train = set(shuffle_and_truncate(list(cat_train),args,min_trunc))
@@ -648,21 +625,17 @@ def generate_splitted_metadaset(args):
         print("dog val: ", len(dog_val))
         print("dog train", len(dog_train))
 
-    max_p = np.argmax(p_size)
-    min_p = np.argmin(p_size)
-    # print("max partition size: ",max_p, p_size[max_p])
-    new_size = int(p_size[max_p]/2*minority_percentage)+1
-    indoor_partition_dict[f'cat_p{min_p}'] = set(shuffle_and_truncate(indoor_partition_dict[f'cat_p{min_p}'],args,new_size))
-    indoor_partition_dict[f'dog_p{min_p}'] = set(shuffle_and_truncate(indoor_partition_dict[f'dog_p{min_p}'],args,new_size))
+    # max_p = np.argmax(p_size)
+    # min_p = np.argmin(p_size)
+    # # print("max partition size: ",max_p, p_size[max_p])
+    # new_size = int(p_size[max_p]/2*minority_percentage)+1
+    # indoor_partition_dict[f'cat_p{min_p}'] = set(shuffle_and_truncate(indoor_partition_dict[f'cat_p{min_p}'],args,new_size))
+    # indoor_partition_dict[f'dog_p{min_p}'] = set(shuffle_and_truncate(indoor_partition_dict[f'dog_p{min_p}'],args,new_size))
 
-    new_size = int(p_size_val[max_p]/2*minority_percentage)+1
+    # new_size = int(p_size_val[max_p]/2*minority_percentage)+1
     # indoor_partition_dict_val[f'cat_p{min_p}'] = set(shuffle_and_truncate(indoor_partition_dict_val[f'cat_p{min_p}'],args,new_size))
     # indoor_partition_dict_val[f'dog_p{min_p}'] = set(shuffle_and_truncate(indoor_partition_dict_val[f'dog_p{min_p}'],args,new_size))
-    
-    # all_cat_test = set()
-    # all_dog_test = set()
-    # all_cat_train = set()
-    # all_dog_train = set()
+
 
     env_name = 'outdoor'
     print("outdoor clusters, ",len(animals_outdoor_clusters))
@@ -699,7 +672,7 @@ def generate_splitted_metadaset(args):
         cat_val = set(shuffle_and_truncate(sub_cat_imgs-all_cat_train-all_cat_val-all_cat_test,args,sub_val_size))
         all_cat_val.update(cat_val)
 
-        cat_train = set(sub_cat_imgs)-all_cat_test-all_cat_val
+        cat_train = set(sub_cat_imgs)-all_cat_test-all_cat_val-all_cat_train
         
 
         ## Dogs
@@ -709,7 +682,7 @@ def generate_splitted_metadaset(args):
         dog_val = set(shuffle_and_truncate(sub_dog_imgs-all_dog_train-all_dog_test-all_dog_val,args,sub_val_size))
         all_dog_val.update(dog_val)
 
-        dog_train = set(sub_dog_imgs)-all_dog_test-all_dog_val
+        dog_train = set(sub_dog_imgs)-all_dog_test-all_dog_val-all_dog_train
         
 
         min_trunc = min(len(dog_train), len(cat_train))
@@ -740,25 +713,265 @@ def generate_splitted_metadaset(args):
         p_size.append(len(cat_train)+len(dog_train))
         p_size_val.append(len(cat_val)+len(dog_val))
     
-    max_p = np.argmax(p_size)
-    min_p = np.argmin(p_size)
+    # max_p = np.argmax(p_size)
+    # min_p = np.argmin(p_size)
     # print("max partition size: ",max_p, p_size[max_p])
-    new_size = int(p_size[max_p]/2*minority_percentage)+1
+    # new_size = int(p_size[max_p]/2*minority_percentage)+1
     
-    outdoor_partition_dict[f'cat_p{min_p}'] = set(shuffle_and_truncate(outdoor_partition_dict[f'cat_p{min_p}'],args,new_size))
-    outdoor_partition_dict[f'dog_p{min_p}'] = set(shuffle_and_truncate(outdoor_partition_dict[f'dog_p{min_p}'],args,new_size))
+    # outdoor_partition_dict[f'cat_p{min_p}'] = set(shuffle_and_truncate(outdoor_partition_dict[f'cat_p{min_p}'],args,new_size))
+    # outdoor_partition_dict[f'dog_p{min_p}'] = set(shuffle_and_truncate(outdoor_partition_dict[f'dog_p{min_p}'],args,new_size))
 
-    new_size = int(p_size_val[max_p]/2*minority_percentage)+1
+    # new_size = int(p_size_val[max_p]/2*minority_percentage)+1
 
     # outdoor_partition_dict_val[f'cat_p{min_p}'] = set(shuffle_and_truncate(outdoor_partition_dict_val[f'cat_p{min_p}'],args,new_size))
     # outdoor_partition_dict_val[f'dog_p{min_p}'] = set(shuffle_and_truncate(outdoor_partition_dict_val[f'dog_p{min_p}'],args,new_size))
 
     
+    #### extract validation set for grid search ####
+    if os.path.isdir(SUBPOPULATION_SHIFT_DATASET_FOLDER): 
+        shutil.rmtree(SUBPOPULATION_SHIFT_DATASET_FOLDER) 
+    os.makedirs(SUBPOPULATION_SHIFT_DATASET_FOLDER, exist_ok = False)
+    print("SUBPOPULATION_SHIFT_DATASET_FOLDER: ", SUBPOPULATION_SHIFT_DATASET_FOLDER)
+    # exit(0)
+    SUBPOPULATION_SHIFT_DATASET_FOLDER_p1 = SUBPOPULATION_SHIFT_DATASET_FOLDER+'/p1'
+    SUBPOPULATION_SHIFT_DATASET_FOLDER_p2 = SUBPOPULATION_SHIFT_DATASET_FOLDER+'/p2'
+    SUBPOPULATION_SHIFT_DATASET_FOLDER_irm = SUBPOPULATION_SHIFT_DATASET_FOLDER+'/irm'
+    
+    ##################
+    # * save irm *
+    ##################
+    if os.path.isdir(SUBPOPULATION_SHIFT_DATASET_FOLDER_irm): 
+        shutil.rmtree(SUBPOPULATION_SHIFT_DATASET_FOLDER_irm) 
+    os.makedirs(SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, exist_ok = False)
+
+    with open(SUBPOPULATION_SHIFT_DATASET_FOLDER_irm + '/' + 'imageID_to_group.pkl', 'wb') as handle:
+        imageID_to_group = dict()
+        group_to_imageID = {
+            'cat_indoor_p0': indoor_partition_dict['cat_p0'],
+            'cat_indoor_p1': indoor_partition_dict['cat_p1'],
+
+            'dog_indoor_p0': indoor_partition_dict['dog_p0'],
+            'dog_indoor_p1': indoor_partition_dict['dog_p1'],
+            
+            f'cat_indoor_{test_envs[0]}_test' :indoor_partition_dict_test['cat_0'],
+            f'cat_outdoor_{test_envs[1]}_test': indoor_partition_dict_test['cat_1'],
+            f'cat_outdoor_{test_envs[2]}_test': indoor_partition_dict_test['cat_2'],
+            f'cat_outdoor_{test_envs[3]}_test': indoor_partition_dict_test['cat_3'],
+            
+            f'dog_indoor_{test_envs[0]}_test' :indoor_partition_dict_test['dog_0'],
+            f'dog_outdoor_{test_envs[1]}_test': indoor_partition_dict_test['dog_1'],
+            f'dog_outdoor_{test_envs[2]}_test' :indoor_partition_dict_test['dog_2'],
+            f'dog_outdoor_{test_envs[3]}_test': indoor_partition_dict_test['dog_3'],
+
+            'cat_indoor_p0_val' :indoor_partition_dict_val['cat_p0'],
+            'cat_indoor_p1_val': indoor_partition_dict_val['cat_p1'],
+            'dog_indoor_p0_val' :indoor_partition_dict_val['dog_p0'],
+            'dog_indoor_p1_val': indoor_partition_dict_val['dog_p1'],
+
+            'cat_outdoor_p0': outdoor_partition_dict['cat_p0'],
+            'cat_outdoor_p1': outdoor_partition_dict['cat_p1'],
+
+            'dog_outdoor_p0': outdoor_partition_dict['dog_p0'],
+            'dog_outdoor_p1': outdoor_partition_dict['dog_p1'],
+            
+            # 'cat_outdoor_p0_test' :outdoor_partition_dict_test['cat_p0'],
+            # 'cat_outdoor_p1_test': outdoor_partition_dict_test['cat_p1'],
+            # 'dog_outdoor_p0_test' :outdoor_partition_dict_test['dog_p0'],
+            # 'dog_outdoor_p1_test': outdoor_partition_dict_test['dog_p1'],
+
+            'cat_outdoor_p0_val' :outdoor_partition_dict_val['cat_p0'],
+            'cat_outdoor_p1_val': outdoor_partition_dict_val['cat_p1'],
+            'dog_outdoor_p0_val' :outdoor_partition_dict_val['dog_p0'],
+            'dog_outdoor_p1_val': outdoor_partition_dict_val['dog_p1'],
+        }
+        for group_str in group_to_imageID:
+            for imageID in group_to_imageID[group_str]:
+                if imageID not in imageID_to_group:
+                    imageID_to_group[imageID] = [group_str] 
+                else:
+                    imageID_to_group[imageID].append(group_str)
+        pickle.dump(imageID_to_group, file=handle)
+    cat_test_imgs = set()
+    for x in test_ids:
+        cat_test_imgs = cat_test_imgs.union(indoor_partition_dict_test[f"cat_{x}"])
+    dog_test_imgs = set()
+    for x in test_ids:
+        dog_test_imgs = dog_test_imgs.union(indoor_partition_dict_test[f"dog_{x}"])
+    
+    copy_images(
+        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'test', 'cat', use_symlink=False,
+        img_IDs =  cat_test_imgs)
+    copy_images(
+        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'test', 'dog', use_symlink=False,
+        img_IDs = dog_test_imgs)
+
+    copy_images(
+        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'val_out_of_domain', 'cat', use_symlink=False,
+        img_IDs =  indoor_partition_dict_val['cat_p0'].union(indoor_partition_dict_val['cat_p1']).union(outdoor_partition_dict_val['cat_p0']).union(outdoor_partition_dict_val['cat_p1'])
+        )
+    copy_images(
+        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'val_out_of_domain', 'dog', use_symlink=False,
+        img_IDs = indoor_partition_dict_val['dog_p0'].union(indoor_partition_dict_val['dog_p1']).union(outdoor_partition_dict_val['dog_p0']).union(outdoor_partition_dict_val['dog_p1'])
+        )
+    
+    copy_images(
+        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'train', 'cat', use_symlink=False,
+        img_IDs = indoor_partition_dict['cat_p0'].union(indoor_partition_dict['cat_p1']).union(outdoor_partition_dict['cat_p0']).union(outdoor_partition_dict['cat_p1'])
+        )
+    copy_images(
+        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'train', 'dog', use_symlink=False,
+        img_IDs = outdoor_partition_dict['dog_p0'].union(outdoor_partition_dict['dog_p1']).union(indoor_partition_dict['dog_p0']).union(indoor_partition_dict['dog_p1'])
+        )    
+
+    
+    
+    
+    # env 1 partitions
+    p1, p2 = list(animals_indoor_clusters[0]), list(animals_indoor_clusters[1])
+    tmp_p = list(p1)
+    new_comms = []
+    if overlap_len > 0:
+        for i in range(overlap_len):
+            min_cuts = []
+            for pp in tmp_p: 
+                mc = nx.cut_size(G_in, pp,p2,weight='weight')
+                min_cuts.append(mc)
+            max_cut = np.argmax(min_cuts)
+            new_comms.append(tmp_p[max_cut])
+            p2.append(tmp_p[max_cut])
+            tmp_p.pop(max_cut)
+        # indoor_partition_dict[f"cat_p{ac}"] = cat_train
+        # indoor_partition_dict[f"dog_p{ac}"] = dog_train
+        sub_cat_imgs = set()
+        sub_dog_imgs = set()
+        total_clust = 0
+        ac = 1
+        print("LEN OF P11: ", len(indoor_partition_dict[f"cat_p0"]))
+        for com in new_comms:
+            sub_cat = 'cat('+com+')'
+            sub_dog = 'dog('+com+')'
+
+            sub_cat_imgs.update(node_name_to_img_id[sub_cat].intersection(indoor_partition_dict[f"cat_p{ac}"]))
+            sub_cat_imgs.update(sub_cat_imgs-trainsg_dupes)
+
+            sub_dog_imgs.update(node_name_to_img_id[sub_dog].intersection(indoor_partition_dict[f"dog_p{ac}"]))
+            sub_dog_imgs.update(sub_dog_imgs-trainsg_dupes)
+        sub_cat_imgs_p0 = sub_cat_imgs
+        sub_dog_imgs_p1 = sub_dog_imgs
+        
+        new_comms = []
+        tmp_p = list(p2)
+        # print("p1 indoor: ", p1)
+        for i in range(overlap_len):
+            min_cuts = []
+            for pp in tmp_p: 
+                mc = nx.cut_size(G_in, pp,p1,weight='weight')
+                min_cuts.append(mc)
+            max_cut = np.argmax(min_cuts)
+            p1.append(tmp_p[max_cut])
+            new_comms.append(tmp_p[max_cut])
+            tmp_p.pop(max_cut)
+        animals_indoor_clusters = [p1, p2]
+        sub_cat_imgs = set()
+        sub_dog_imgs = set()
+        total_clust = 0
+        ac = 0
+        for com in new_comms:
+            sub_cat = 'cat('+com+')'
+            sub_dog = 'dog('+com+')'
+
+            sub_cat_imgs.update(node_name_to_img_id[sub_cat].intersection(indoor_partition_dict[f"cat_p{ac}"]))
+            sub_cat_imgs.update(sub_cat_imgs-trainsg_dupes)
+
+            sub_dog_imgs.update(node_name_to_img_id[sub_dog].intersection(indoor_partition_dict[f"dog_p{ac}"]))
+            sub_dog_imgs.update(sub_dog_imgs-trainsg_dupes)
+        
+        ac = 0
+        indoor_partition_dict[f"cat_p{ac}"].update(sub_cat_imgs_p0)
+        indoor_partition_dict[f"dog_p{ac}"].update(sub_dog_imgs_p1)
+
+        ac = 1
+        indoor_partition_dict[f"cat_p{ac}"].update(sub_cat_imgs)
+        indoor_partition_dict[f"dog_p{ac}"].update(sub_dog_imgs)
+
+
+        # env 2 paritions
+        p1, p2 = list(animals_outdoor_clusters[0]), list(animals_outdoor_clusters[1])
+        tmp_p = list(p1)
+        new_comms = []
+        for i in range(overlap_len):
+            min_cuts = []
+            for pp in tmp_p: 
+                mc = nx.cut_size(G_out, pp,p2,weight='weight')
+                min_cuts.append(mc)
+            max_cut = np.argmax(min_cuts)
+            p2.append(tmp_p[max_cut])
+            new_comms.append(tmp_p[max_cut])
+            tmp_p.pop(max_cut)
+        sub_cat_imgs = set()
+        sub_dog_imgs = set()
+        total_clust = 0
+        ac = 1
+        for com in new_comms:
+            sub_cat = 'cat('+com+')'
+            sub_dog = 'dog('+com+')'
+
+            sub_cat_imgs.update(node_name_to_img_id[sub_cat].intersection(outdoor_partition_dict[f"cat_p{ac}"]))
+            sub_cat_imgs.update(sub_cat_imgs-trainsg_dupes)
+
+            sub_dog_imgs.update(node_name_to_img_id[sub_dog].intersection(outdoor_partition_dict[f"dog_p{ac}"]))
+            sub_dog_imgs.update(sub_dog_imgs-trainsg_dupes)
+        sub_cat_imgs_p0 = sub_cat_imgs
+        sub_dog_imgs_p0 = sub_dog_imgs
+        
+        new_comms = [] 
+        tmp_p = list(p2)
+        for i in range(overlap_len):
+            min_cuts = []
+            for pp in tmp_p: 
+                mc = nx.cut_size(G_out, pp,p1,weight='weight')
+                min_cuts.append(mc)
+            max_cut = np.argmax(min_cuts)
+            p1.append(tmp_p[max_cut])
+            new_comms.append(tmp_p[max_cut])
+            tmp_p.pop(max_cut)
+
+        animals_outdoor_clusters = [p1, p2]
+        sub_cat_imgs = set()
+        sub_dog_imgs = set()
+        total_clust = 0
+        ac = 0
+        for com in new_comms:
+            sub_cat = 'cat('+com+')'
+            sub_dog = 'dog('+com+')'
+
+            sub_cat_imgs.update(node_name_to_img_id[sub_cat].intersection(outdoor_partition_dict[f"cat_p{ac}"]))
+            sub_cat_imgs.update(sub_cat_imgs-trainsg_dupes)
+
+            sub_dog_imgs.update(node_name_to_img_id[sub_dog].intersection(outdoor_partition_dict[f"dog_p{ac}"]))
+            sub_dog_imgs.update(sub_dog_imgs-trainsg_dupes)
+        ac = 0
+        outdoor_partition_dict[f"cat_p{ac}"].update(sub_cat_imgs_p0)
+        outdoor_partition_dict[f"dog_p{ac}"].update(sub_dog_imgs_p0)
+        
+        ac = 1
+        outdoor_partition_dict[f"cat_p{ac}"].update(sub_cat_imgs)
+        outdoor_partition_dict[f"dog_p{ac}"].update(sub_dog_imgs)
+
+        # print("LEN OF P11: ", len(indoor_partition_dict[f"cat_p0"]))
+        
+    
+    print(animals_indoor_clusters)
+    print(animals_outdoor_clusters)
+    print("number of communities in env 1: ", len(animals_indoor_clusters[0]), len(animals_indoor_clusters[1]))
+    print("number of communities in env 2", len(animals_outdoor_clusters[0]), len(animals_outdoor_clusters[1]))
+
+    
     cat_train = indoor_partition_dict['cat_p0'].union(indoor_partition_dict['cat_p1']).union(outdoor_partition_dict['cat_p0']).union(outdoor_partition_dict['cat_p1'])
     dog_train = indoor_partition_dict['dog_p0'].union(indoor_partition_dict['dog_p1']).union(outdoor_partition_dict['dog_p0']).union(outdoor_partition_dict['dog_p1'])
 
-    cat_test = indoor_partition_dict_test['cat_p0'].union(indoor_partition_dict_test['cat_p1']).union(outdoor_partition_dict_test['cat_p0']).union(outdoor_partition_dict_test['cat_p1'])
-    dog_test = indoor_partition_dict_test['dog_p0'].union(indoor_partition_dict_test['dog_p1']).union(outdoor_partition_dict_test['dog_p0']).union(outdoor_partition_dict_test['dog_p1'])
+    # cat_test = indoor_partition_dict_test['cat_p0'].union(indoor_partition_dict_test['cat_p1']).union(outdoor_partition_dict_test['cat_p0']).union(outdoor_partition_dict_test['cat_p1'])
+    # dog_test = indoor_partition_dict_test['dog_p0'].union(indoor_partition_dict_test['dog_p1']).union(outdoor_partition_dict_test['dog_p0']).union(outdoor_partition_dict_test['dog_p1'])
 
     print(" *** New sizes: ",)
     print('cluster A.1: ', len(indoor_partition_dict['cat_p0'])+len(indoor_partition_dict['dog_p0']))
@@ -772,14 +985,22 @@ def generate_splitted_metadaset(args):
     print('cluster B.1: ',  len(outdoor_partition_dict_val['cat_p0'])+len(outdoor_partition_dict_val['dog_p0']))
     print('cluster B.2: ', len(outdoor_partition_dict_val['cat_p1'])+len(outdoor_partition_dict_val['dog_p1']))
 
-    print(" ** test size: **")
-    print('cluster A.1: ', len(indoor_partition_dict_test['cat_p0'])+len(indoor_partition_dict_test['dog_p0']))
-    print('cluster A.2: ',  len(indoor_partition_dict_test['cat_p1'])+len(indoor_partition_dict_test['dog_p1']))
-    print('cluster B.1: ',  len(outdoor_partition_dict_test['cat_p0'])+len(outdoor_partition_dict_test['dog_p0']))
-    print('cluster B.2: ', len(outdoor_partition_dict_test['cat_p1'])+len(outdoor_partition_dict_test['dog_p1']))
+    # print(" ** test size: **")
+    # print('cluster A.1: ', len(indoor_partition_dict_test['cat_p0'])+len(indoor_partition_dict_test['dog_p0']))
+    # print('cluster A.2: ',  len(indoor_partition_dict_test['cat_p1'])+len(indoor_partition_dict_test['dog_p1']))
+    # print('cluster B.1: ',  len(outdoor_partition_dict_test['cat_p0'])+len(outdoor_partition_dict_test['dog_p0']))
+    # print('cluster B.2: ', len(outdoor_partition_dict_test['cat_p1'])+len(outdoor_partition_dict_test['dog_p1']))
     
 
     ### Re-evaluate distances
+    aindoors = animals_indoor_clusters[0]
+    aindoors.extend(animals_indoor_clusters[1])
+    sub_indoor_comms = aindoors
+
+    aoutdoors = animals_outdoor_clusters[0]
+    aoutdoors.extend(animals_outdoor_clusters[1])
+    sub_outdoor_comms = aoutdoors
+    print()
     print("re-evaluate dists")
     for com in test_envs:
         all_comms = set(sub_indoor_comms)-set(com)
@@ -788,19 +1009,14 @@ def generate_splitted_metadaset(args):
         all_comms = set(sub_outdoor_comms)-set(com)
         cut_out = nx.cut_size(G,com,all_comms,weight='weight')
 
-        print(f"{com} | dist_e1 = {cut_in} | dist_e2 = {cut_out}")    
+        all_comms = set(sub_outdoor_comms).union(set(sub_indoor_comms))-set(com)
+        cut_total = nx.cut_size(G,com,all_comms,weight='weight')
 
-    #### extract validation set for grid search ####
-    print("SUBPOPULATION_SHIFT_DATASET_FOLDER: ", SUBPOPULATION_SHIFT_DATASET_FOLDER)
-    # exit(0)
-    SUBPOPULATION_SHIFT_DATASET_FOLDER_p1 = SUBPOPULATION_SHIFT_DATASET_FOLDER+'/p1'
-    SUBPOPULATION_SHIFT_DATASET_FOLDER_p2 = SUBPOPULATION_SHIFT_DATASET_FOLDER+'/p2'
-    SUBPOPULATION_SHIFT_DATASET_FOLDER_irm = SUBPOPULATION_SHIFT_DATASET_FOLDER+'/irm'
+        print(f"{com}: total similarity: {cut_total} | dist_e1 = {cut_in} | dist_e2 = {cut_out}")    
+
+    
 
     #### save minority group keys #####
-    if os.path.isdir(SUBPOPULATION_SHIFT_DATASET_FOLDER): 
-        shutil.rmtree(SUBPOPULATION_SHIFT_DATASET_FOLDER) 
-    os.makedirs(SUBPOPULATION_SHIFT_DATASET_FOLDER, exist_ok = False)
 
     p11 = len(indoor_partition_dict['cat_p0'])+len(indoor_partition_dict['dog_p0'])
     p12 = len(indoor_partition_dict['cat_p1'])+len(indoor_partition_dict['dog_p1'])
@@ -833,10 +1049,16 @@ def generate_splitted_metadaset(args):
             'dog_p0': indoor_partition_dict['dog_p0'],
             'dog_p1': indoor_partition_dict['dog_p1'],
             
-            'cat_p0_test' :indoor_partition_dict_test['cat_p0'],
-            'cat_p1_test': indoor_partition_dict_test['cat_p1'],
-            'dog_p0_test' :indoor_partition_dict_test['dog_p0'],
-            'dog_p1_test': indoor_partition_dict_test['dog_p1'],
+            f'cat_indoor_{test_envs[0]}_test' :indoor_partition_dict_test['cat_0'],
+            f'cat_outdoor_{test_envs[1]}_test': indoor_partition_dict_test['cat_1'],
+            f'cat_outdoor_{test_envs[2]}_test': indoor_partition_dict_test['cat_2'],
+            f'cat_outdoor_{test_envs[3]}_test': indoor_partition_dict_test['cat_3'],
+            
+            f'dog_indoor_{test_envs[0]}_test' :indoor_partition_dict_test['dog_0'],
+            f'dog_outdoor_{test_envs[1]}_test': indoor_partition_dict_test['dog_1'],
+            f'dog_outdoor_{test_envs[2]}_test' :indoor_partition_dict_test['dog_2'],
+            f'dog_outdoor_{test_envs[3]}_test': indoor_partition_dict_test['dog_3'],
+
 
             'cat_p0_val' :indoor_partition_dict_val['cat_p0'],
             'cat_p1_val': indoor_partition_dict_val['cat_p1'],
@@ -850,14 +1072,19 @@ def generate_splitted_metadaset(args):
                 else:
                     imageID_to_group[imageID].append(group_str)
         pickle.dump(imageID_to_group, file=handle)
+    # cat_test_imgs = set()
+    # for x in test_ids:
+    #     cat_test_imgs = cat_test_imgs.union(indoor_partition_dict_test[f"cat_{x}"])
+    # dog_test_imgs = set()
+    # for x in test_ids:
+    #     dog_test_imgs = dog_test_imgs.union(indoor_partition_dict_test[f"dog_{x}"])
+    
     copy_images(
         SUBPOPULATION_SHIFT_DATASET_FOLDER_p1, 'test', 'cat', use_symlink=False,
-        img_IDs =  indoor_partition_dict_test['cat_p0'].union(indoor_partition_dict_test['cat_p1'])
-        )
+        img_IDs =  cat_test_imgs)
     copy_images(
         SUBPOPULATION_SHIFT_DATASET_FOLDER_p1, 'test', 'dog', use_symlink=False,
-        img_IDs = indoor_partition_dict_test['dog_p0'].union(indoor_partition_dict_test['dog_p1'])
-        )
+        img_IDs = dog_test_imgs)
     
     copy_images(
         SUBPOPULATION_SHIFT_DATASET_FOLDER_p1, 'val_out_of_domain', 'cat', use_symlink=False,
@@ -894,10 +1121,16 @@ def generate_splitted_metadaset(args):
             'dog_p0': outdoor_partition_dict['dog_p0'],
             'dog_p1': outdoor_partition_dict['dog_p1'],
             
-            'cat_p0_test' :outdoor_partition_dict_test['cat_p0'],
-            'cat_p1_test': outdoor_partition_dict_test['cat_p1'],
-            'dog_p0_test' :outdoor_partition_dict_test['dog_p0'],
-            'dog_p1_test': outdoor_partition_dict_test['dog_p1'],
+            f'cat_indoor_{test_envs[0]}_test' :indoor_partition_dict_test['cat_0'],
+            f'cat_outdoor_{test_envs[1]}_test': indoor_partition_dict_test['cat_1'],
+            f'cat_outdoor_{test_envs[2]}_test': indoor_partition_dict_test['cat_2'],
+            f'cat_outdoor_{test_envs[3]}_test': indoor_partition_dict_test['cat_3'],
+            
+            f'dog_indoor_{test_envs[0]}_test' :indoor_partition_dict_test['dog_0'],
+            f'dog_outdoor_{test_envs[1]}_test': indoor_partition_dict_test['dog_1'],
+            f'dog_outdoor_{test_envs[2]}_test' :indoor_partition_dict_test['dog_2'],
+            f'dog_outdoor_{test_envs[3]}_test': indoor_partition_dict_test['dog_3'],
+
 
             'cat_p0_val' :outdoor_partition_dict_val['cat_p0'],
             'cat_p1_val': outdoor_partition_dict_val['cat_p1'],
@@ -914,12 +1147,10 @@ def generate_splitted_metadaset(args):
 
     copy_images(
         SUBPOPULATION_SHIFT_DATASET_FOLDER_p2, 'test', 'cat', use_symlink=False,
-        img_IDs =  outdoor_partition_dict_test['cat_p0'].union(outdoor_partition_dict_test['cat_p1'])
-        )
+        img_IDs =  cat_test_imgs)
     copy_images(
         SUBPOPULATION_SHIFT_DATASET_FOLDER_p2, 'test', 'dog', use_symlink=False,
-        img_IDs = outdoor_partition_dict_test['dog_p0'].union(outdoor_partition_dict_test['dog_p1'])
-        )
+        img_IDs = dog_test_imgs)
 
     copy_images(
         SUBPOPULATION_SHIFT_DATASET_FOLDER_p2, 'val_out_of_domain', 'cat', use_symlink=False,
@@ -941,82 +1172,7 @@ def generate_splitted_metadaset(args):
         )    
 
     
-    ##################
-    # * save irm *
-    ##################
-    if os.path.isdir(SUBPOPULATION_SHIFT_DATASET_FOLDER_irm): 
-        shutil.rmtree(SUBPOPULATION_SHIFT_DATASET_FOLDER_irm) 
-    os.makedirs(SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, exist_ok = False)
-
-    with open(SUBPOPULATION_SHIFT_DATASET_FOLDER_irm + '/' + 'imageID_to_group.pkl', 'wb') as handle:
-        imageID_to_group = dict()
-        group_to_imageID = {
-            'cat_indoor_p0': indoor_partition_dict['cat_p0'],
-            'cat_indoor_p1': indoor_partition_dict['cat_p1'],
-
-            'dog_indoor_p0': indoor_partition_dict['dog_p0'],
-            'dog_indoor_p1': indoor_partition_dict['dog_p1'],
-            
-            'cat_indoor_p0_test' :indoor_partition_dict_test['cat_p0'],
-            'cat_indoor_p1_test': indoor_partition_dict_test['cat_p1'],
-            'dog_indoor_p0_test' :indoor_partition_dict_test['dog_p0'],
-            'dog_indoor_p1_test': indoor_partition_dict_test['dog_p1'],
-
-            'cat_indoor_p0_val' :indoor_partition_dict_val['cat_p0'],
-            'cat_indoor_p1_val': indoor_partition_dict_val['cat_p1'],
-            'dog_indoor_p0_val' :indoor_partition_dict_val['dog_p0'],
-            'dog_indoor_p1_val': indoor_partition_dict_val['dog_p1'],
-
-            'cat_outdoor_p0': outdoor_partition_dict['cat_p0'],
-            'cat_outdoor_p1': outdoor_partition_dict['cat_p1'],
-
-            'dog_outdoor_p0': outdoor_partition_dict['dog_p0'],
-            'dog_outdoor_p1': outdoor_partition_dict['dog_p1'],
-            
-            'cat_outdoor_p0_test' :outdoor_partition_dict_test['cat_p0'],
-            'cat_outdoor_p1_test': outdoor_partition_dict_test['cat_p1'],
-            'dog_outdoor_p0_test' :outdoor_partition_dict_test['dog_p0'],
-            'dog_outdoor_p1_test': outdoor_partition_dict_test['dog_p1'],
-
-            'cat_outdoor_p0_val' :outdoor_partition_dict_val['cat_p0'],
-            'cat_outdoor_p1_val': outdoor_partition_dict_val['cat_p1'],
-            'dog_outdoor_p0_val' :outdoor_partition_dict_val['dog_p0'],
-            'dog_outdoor_p1_val': outdoor_partition_dict_val['dog_p1'],
-        }
-        for group_str in group_to_imageID:
-            for imageID in group_to_imageID[group_str]:
-                if imageID not in imageID_to_group:
-                    imageID_to_group[imageID] = [group_str] 
-                else:
-                    imageID_to_group[imageID].append(group_str)
-        pickle.dump(imageID_to_group, file=handle)
-    copy_images(
-        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'test', 'cat', use_symlink=False,
-        img_IDs =  indoor_partition_dict_test['cat_p0'].union(indoor_partition_dict_test['cat_p1']).union(outdoor_partition_dict_test['cat_p0']).union(outdoor_partition_dict_test['cat_p1'])
-        )
-    copy_images(
-        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'test', 'dog', use_symlink=False,
-        img_IDs = indoor_partition_dict_test['dog_p0'].union(indoor_partition_dict_test['dog_p1']).union(outdoor_partition_dict_test['dog_p0']).union(outdoor_partition_dict_test['dog_p1'])
-        )
-
-    copy_images(
-        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'val_out_of_domain', 'cat', use_symlink=False,
-        img_IDs =  indoor_partition_dict_val['cat_p0'].union(indoor_partition_dict_val['cat_p1']).union(outdoor_partition_dict_val['cat_p0']).union(outdoor_partition_dict_val['cat_p1'])
-        )
-    copy_images(
-        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'val_out_of_domain', 'dog', use_symlink=False,
-        img_IDs = indoor_partition_dict_val['dog_p0'].union(indoor_partition_dict_val['dog_p1']).union(outdoor_partition_dict_val['dog_p0']).union(outdoor_partition_dict_val['dog_p1'])
-        )
     
-    copy_images(
-        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'train', 'cat', use_symlink=False,
-        img_IDs = indoor_partition_dict['cat_p0'].union(indoor_partition_dict['cat_p1']).union(outdoor_partition_dict['cat_p0']).union(outdoor_partition_dict['cat_p1'])
-        )
-    copy_images(
-        SUBPOPULATION_SHIFT_DATASET_FOLDER_irm, 'train', 'dog', use_symlink=False,
-        img_IDs = outdoor_partition_dict['dog_p0'].union(outdoor_partition_dict['dog_p1']).union(indoor_partition_dict['dog_p0']).union(indoor_partition_dict['dog_p1'])
-        )    
-
     return
 
 

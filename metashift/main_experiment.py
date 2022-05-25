@@ -207,7 +207,6 @@ def report_every_set_acc(my_dataset, args, split='val'):
     if len(pred_score_all) != len(my_dataset.samples):
         print("length of pred_score_all", len(pred_score_all))
         print("length of data samples ", len(my_dataset.samples))
-        exit(0)
     assert len(pred_score_all) == len(my_dataset.samples)
 
     ##################################
@@ -334,6 +333,7 @@ def validate(val_loader, model, criterion, args, dumpResult,
     ##################################
     target_all = []
     pred_score_all = [] 
+    losses_all = []
 
     val_grad_list = []
 
@@ -362,6 +362,7 @@ def validate(val_loader, model, criterion, args, dumpResult,
         acc1 = accuracy(output, target, topk=(1, ))[0]
         losses.update(loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
+        losses_all.append(loss.item())
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -379,10 +380,12 @@ def validate(val_loader, model, criterion, args, dumpResult,
     target_all = np.concatenate( target_all, axis=0)
     pred_score_all = np.concatenate( pred_score_all, axis=0)
 
+    print("losses: ",losses)
     dump_result_dict = {
                 "target_all": target_all, 
                 "pred_score_all": pred_score_all, 
-                'val_grad_list': val_grad_list
+                'val_grad_list': val_grad_list,
+                "losses":losses_all
                 }
     if dumpResult is True:
         with open(os.path.join( args.output_dir, 'model_validate_dump.pkl'), "wb") as pkl_file:
@@ -584,8 +587,8 @@ def main_generalization():
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    # torch.backends.cudnn.deterministic = True
-    # torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     ##################################
     # Fancy training dtaset 
@@ -646,7 +649,8 @@ def main_generalization():
             'train_batch_grads': [], 
             'val_all_grads': [], 
         }
-    
+    total_loss = []
+    val_acc = []
     for batch_id, train_batch in enumerate(train_loader):
         ##################################
         # One train step
@@ -663,7 +667,7 @@ def main_generalization():
             y_slice = (target[2 * domain_id * args.batch_size:2 * (domain_id+1) * args.batch_size])
             minibatches_list.append( (x_slice, y_slice) )
         step_vals = algorithm.update(minibatches_list, unlabeled=None)
-        # print('step_vals', step_vals)
+        total_loss.append(step_vals['loss'])
 
 
         criterion = torch.nn.CrossEntropyLoss() # For compatible 
@@ -684,7 +688,8 @@ def main_generalization():
             subset_influence_batch_results['val_all_grads'].append(dump_result_dict['val_grad_list'])
 
 
-
+        # acc1, _ = validate(val_out_of_domain_loader, model, criterion, args, dumpResult=True)
+        # val_acc.append(acc1.item())
 
         if batch_id % 20 == 0:
             print('Iteration:', batch_id)
@@ -698,18 +703,28 @@ def main_generalization():
             print('out-of-domain val')
             logging.info('out-of-domain val')
             acc1, _ = validate(val_out_of_domain_loader, model, criterion, args, dumpResult=True)
+            val_acc.append(acc1.item())
             # Report every-group acc, worst-set acc 
             report_every_set_acc(val_out_of_domain_dataset, args)
+            print("acc 1: ", acc1)
     
     
+    with open(os.path.join( args.output_dir, 'training_loss.pkl'), "wb") as pkl_file:
+        pickle.dump(
+            {"losses":total_loss,
+            "val_acc":val_acc},
+            pkl_file, 
+        )
     acc1, _ = validate(val_out_of_domain_loader, model, criterion, args, dumpResult=True)
     # Report every-group acc, worst-set acc 
     report_every_set_acc(val_out_of_domain_dataset, args)
-    
+
     test_loader, test_dataset = get_val_loader(dataset_dir='test', args=args)
     acc1, _ = validate(test_loader, model, criterion, args, dumpResult=True)
+    
     # Report every-group acc, worst-set acc 
     report_every_set_acc(test_dataset,args, split = 'test')
+    print("Avg. test accuracy: ", acc1)
 
     return
 
