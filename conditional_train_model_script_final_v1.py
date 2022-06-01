@@ -174,7 +174,9 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
 
     
     criterion = nn.CrossEntropyLoss(reduction='mean')
-
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model = nn.DataParallel(model)
     model = model.to(device)
     optimizer = optim
     
@@ -544,8 +546,8 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError
     
-
-    model = model.cuda()
+    
+    # model = model.cuda()
     optimizer = Adam(model.parameters(), lr= learning_rate, eps=1e-08)
     env_sizes = []
 
