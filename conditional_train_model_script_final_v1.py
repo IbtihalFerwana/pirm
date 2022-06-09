@@ -358,12 +358,15 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
 
         if ((avg_val_acc) > best_model_val) and (epoch >= epochs/2) and args.save_best_model:
             if method == "irm" and (epoch > penalty_anneal_iters+10):
+                print("### save best model ###")
                 model.to('cpu')  # moves model (its parameters) to cpu
                 best_model_val = avg_val_acc
                 #model_path_pt = args.model_path+ '_checkpoint.pt'
                 best_model_config = {'epoch': epoch,
                                     'model_state_dict':  copy.deepcopy(model.state_dict()),
                                     'validation_acc': best_model_val}
+                PATH = args.model_path+'_best_model_ckpt'
+                torch.save(best_model_config, PATH)
 
                 model.to(device)
 
@@ -374,6 +377,9 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
                 best_model_config = {'epoch': epoch,
                                     'model_state_dict':  copy.deepcopy(model.state_dict()),
                                     'validation_acc': best_model_val}
+                
+                PATH = args.model_path+'_best_model_ckpt'
+                torch.save(best_model_config, PATH)
 
                 model.to(device)
 
@@ -388,15 +394,20 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
             print(f'Validation Accuracy: {avg_val_acc:.3f} ')
         
     
-    if args.save_best_model == True:
-        PATH = args.model_path+'_best_model_ckpt'
-        torch.save(best_model_config, PATH)
+    # if args.save_best_model == True:
+    # save last model
+    last_model_config = {'epoch': epoch,
+                        'model_state_dict':  copy.deepcopy(model.state_dict()),
+                        'validation_acc': avg_val_acc}
+    PATH = args.model_path+'_last_model_ckpt'
+    torch.save(last_model_config, PATH)
         ### load 
 
         #checkpoint = torch.load(PATH)
         #model.load_state_dict(checkpoint['model_state_dict'])
         #epoch = checkpoint['epoch']
         #val_accuracy = checkpoint['validation_acc']
+    
 
 
 
