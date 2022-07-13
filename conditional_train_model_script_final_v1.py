@@ -18,9 +18,15 @@ import copy
 
 class Dataset(torch.utils.data.Dataset):
 
-    def __init__(self, train_data, tokenizer):
-
-        self.labels = train_data[1]
+    def __init__(self, train_data, tokenizer, nlp_task):
+        if nlp_task == 'scierc':
+            self.labels = train_data[1]
+        elif nlp_task == 'aic':
+            labels_map = {
+            1:0,
+            2:1
+            }
+            self.labels = [labels_map[s] for s in train_data[1]]
         self.texts = [tokenizer(text, 
                                padding='max_length', max_length = 512, truncation=True,
                                 return_tensors="pt") for text in train_data[0]]
@@ -48,13 +54,13 @@ class Dataset(torch.utils.data.Dataset):
 
 class BertClassifier(torch.nn.Module):
 
-    def __init__(self, dropout=0.5):
+    def __init__(self, dropout=0.5, num_classes=6):
 
         super(BertClassifier, self).__init__()
 
         self.bert = BertModel.from_pretrained('bert-base-cased')
         self.dropout = nn.Dropout(dropout)
-        self.linear = nn.Linear(768, 6)
+        self.linear = nn.Linear(768, num_classes)
         #self.relu = nn.ReLU()
 
     def forward(self, input_id, mask, ret_rep = 0):
@@ -328,7 +334,6 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
         
         train_loss_ls.append(epoch_train_loss)
         train_acc_ls.append(epoch_train_acc)
-
         #if (epoch+1)%args.epoch_print_step == 0:
         #    print("###### Epoch Training Accuracy: ", epoch_train_acc)
         
@@ -506,7 +511,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_training_history', type=bool, default=True, help='save stats in dataframe')
     parser.add_argument('--save_best_model', type=bool, default=True, help='save best model weights based on avg validation acc')
     parser.add_argument('--epoch_print_step', type=int, default=1, help='epochs for printing model performance')
-
+    parser.add_argument('--task', type=str, default='scierc', help='select nlp tasks: scierc, aic')
     
     args = parser.parse_args()
     
@@ -521,6 +526,7 @@ if __name__ == "__main__":
     data_split = args.data_split
     linear_probing = args.linear_probing
     seed = args.seed
+    nlp_task = args.task
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -545,9 +551,16 @@ if __name__ == "__main__":
     lengths = []
     val_files = []
 
+    if nlp_task == 'scierc':
+        print('Dataset: SciERC')
+        num_classes = 6
+    elif nlp_task == 'aic':
+        print('Dataset: AIC')
+        num_classes = 2
+
     train_period = '_'.join(training_years)
     if model_name == 'bert':
-        model = BertClassifier()
+        model = BertClassifier(num_classes=num_classes)
         tokenizer_name = 'bert-base-cased'
         tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
     elif model_name == 'distilbert':
@@ -595,7 +608,7 @@ if __name__ == "__main__":
 
     for text_list, labels_list in zip(training_data, training_label):
         train_data = [text_list, labels_list]
-        train = Dataset(train_data, tokenizer)
+        train = Dataset(train_data, tokenizer,nlp_task)
         train_dataloader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=True)
         envs[i]["train_dataloader"] = train_dataloader
         
@@ -607,7 +620,6 @@ if __name__ == "__main__":
             envs[i]["penalty_condition"] = False
 
         i+=1
-
     #### add validation environments here
     
     steps = np.max(env_sizes)//batch_size
@@ -623,7 +635,7 @@ if __name__ == "__main__":
                 text_list_val.append(d["text"])
                 labels_list_val.append(d["labels"])
         val_data = [text_list_val, labels_list_val]
-        val_data = Dataset(val_data, tokenizer)
+        val_data = Dataset(val_data, tokenizer,nlp_task)
     
         val_dataloader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
         envs[i]["val_dataloader"] = val_dataloader
@@ -706,7 +718,7 @@ if __name__ == "__main__":
         
         test_data = [test_text_list, test_labels_list]
 
-        test_data = Dataset(test_data, tokenizer)
+        test_data = Dataset(test_data, tokenizer,nlp_task)
 
         test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=batch_size)
         
