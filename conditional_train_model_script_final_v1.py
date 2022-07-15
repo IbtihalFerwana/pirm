@@ -2,7 +2,7 @@ import pandas as pd
 import torch
 import numpy as np
 #from torch._C import int8
-from transformers import BertTokenizer, BertModel, DistilBertTokenizer, DistilBertModel
+from transformers import BertTokenizer, BertModel, DistilBertTokenizer, DistilBertModel, GPT2Model, GPT2Tokenizer
 from torch import nn
 from torch.optim import Adam
 from tqdm import tqdm
@@ -80,13 +80,42 @@ class BertClassifier(torch.nn.Module):
             return linear_output, inter
 class DistilBertClassifier(torch.nn.Module):
 
-    def __init__(self, dropout=0.5):
+    def __init__(self, dropout=0.5, num_classes=6):
 
         super(DistilBertClassifier, self).__init__()
 
         self.bert = DistilBertModel.from_pretrained('distilbert-base-cased')
         self.dropout = nn.Dropout(dropout)
-        self.linear = nn.Linear(768, 6)
+        self.linear = nn.Linear(768, num_classes)
+        #self.relu = nn.ReLU()
+
+    def forward(self, input_id, mask, ret_rep = 0):
+
+        output1 = self.bert(input_ids= input_id, attention_mask=mask,return_dict=False)
+        hidden_state = output1[0]
+        pooled_output = hidden_state[:, 0]
+        if(ret_rep == 2):
+            inter = pooled_output
+        dropout_output = self.dropout(pooled_output)
+        linear_output = self.linear(dropout_output)
+        if(ret_rep == 1):
+            inter = linear_output
+        #final_layer = self.relu(linear_output)
+
+        if(ret_rep == 0):
+            return linear_output
+        else:
+            return linear_output, inter
+
+class GPT2Classifier(torch.nn.Module):
+
+    def __init__(self, dropout=0.5, num_classes=6):
+
+        super(GPT2Classifier, self).__init__()
+
+        self.bert = GPT2Model.from_pretrained('gpt2')
+        self.dropout = nn.Dropout(dropout)
+        self.linear = nn.Linear(768, num_classes)
         #self.relu = nn.ReLU()
 
     def forward(self, input_id, mask, ret_rep = 0):
@@ -527,9 +556,10 @@ if __name__ == "__main__":
     linear_probing = args.linear_probing
     seed = args.seed
     nlp_task = args.task
-
+    print("Args penalty_anneal_iters: ", args.penalty_anneal_iters)
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
+    print("conditioned on years: ", train_conditioning)
     
     
     stime = time.time()
@@ -567,8 +597,14 @@ if __name__ == "__main__":
         model = DistilBertClassifier()
         tokenizer_name = 'distilbert-base-cased'
         tokenizer = DistilBertTokenizer.from_pretrained(tokenizer_name)
+    elif model_name == 'gpt2':
+        model = GPT2Classifier()
+        tokenizer_name = 'gpt2'
+        tokenizer = GPT2Tokenizer.from_pretrained(tokenizer_name)
+        tokenizer.pad_token = tokenizer.eos_token
     else:
         raise NotImplementedError
+    print("tokenizer used: ", tokenizer_name)
     
     
     # model = model.cuda()
