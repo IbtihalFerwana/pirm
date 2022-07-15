@@ -1,12 +1,25 @@
 ### updates
-1. one can choose the batch size from arguments
-2. This only works for samples size of 600 for envs [1980-1999, 2010-2016]
+1. The script can run both NLP tasks: `scierc` and `aic`
 
 ### Example
-`!python train_model_script.py --batch_size 4 --training_years 1980 1990 --method "erm" --testing_years 2010 2015 --data_dir 'sciERC_temporal' --epochs 1 --output_file 'test_irm_model_2010_2016.csv'`
-
-### TODO:
-1. augmentation should happen in the data splitting
+```
+!python pirm/conditional_train_model_script_final_v1.py 
+--batch_size 2 \
+--penalty_anneal_iters 30 \
+--training_years 2000 \
+--method "irm" \
+--testing_years 2008 2013 \
+--train_conditioning 2000 \
+--data_dir 'sciERC_temporal' \
+--model 'bert' \
+--epochs 1 \
+--data_split 'equal_split' \
+--model_path 'conditional_equal_split_00_06' \
+--seed 0 \
+--save_training_history True \
+--save_best_model True \
+--task 'scierc'
+```
 
 #### Time periods are defined as following (same for erm):
 `input value` --> `included years`
@@ -23,5 +36,6 @@
 
 `2015` --> `[2015 - 2016]`
 
-#### The code works as following (same for erm): 
-if you select `--testing_periods 1980 1990`, then it will test on each period (environment) sepearately and on both periods together (overall acc)
+
+### TODO:
+1. add the option of gpt-2
