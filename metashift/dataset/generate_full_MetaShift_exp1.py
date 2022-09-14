@@ -166,18 +166,10 @@ def build_subset_graph(subject_most_common_list, node_name_to_img_id, trainsg_du
     # print(w)
     G = nx.from_pandas_adjacency(A_pd)
 
-    # print("Kernighan_lin_bisection: ")
-    pars = nx_comm.kernighan_lin_bisection(G,max_iter=1,seed=seed)
-    # print(pars)
-    qual = nx_comm.modularity(G, pars)
-    # print("quality: ", qual)
-    pars = nx_comm.kernighan_lin_bisection(G,max_iter=100,seed=seed)
-    # print(pars)
-    qual = nx_comm.modularity(G, pars)
-    # print("quality: ", qual)
-
+    np.random.seed(2) #2
+    
     print("spectral clustering: ")
-    sc = SpectralClustering(n_clusters = 2, affinity = 'precomputed', assign_labels='discretize',random_state=seed)
+    sc = SpectralClustering(n_clusters = 2, affinity = 'precomputed', assign_labels='discretize',n_init=10, random_state=2)
     sc.fit(Adjacency_matrix)
     # print(labels)
     # print(sc.labels_)
@@ -185,8 +177,8 @@ def build_subset_graph(subject_most_common_list, node_name_to_img_id, trainsg_du
     labels_arr = np.array(labels)
     pars_sc[0] = labels_arr[sc.labels_==0]
     pars_sc[1] = labels_arr[sc.labels_==1]
-    qual = nx_comm.modularity(G, pars_sc)
-    print("quality: ", qual)
+    # qual = nx_comm.modularity(G, pars_sc)
+    # print("quality: ", qual)
     
 
 
@@ -371,7 +363,7 @@ def draw_subject_set_graph(subject_most_common_list, node_name_to_img_id, trains
     return 
 
 
-IMGAGE_SUBSET_SIZE_THRESHOULD = 0
+IMGAGE_SUBSET_SIZE_THRESHOULD = 0 
 
 def preprocess_groups(output_files_flag=True, subject_classes = Constants.SELECTED_CLASSES):
 
