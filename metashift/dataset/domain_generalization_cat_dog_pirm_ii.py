@@ -2,7 +2,7 @@
 Generate MetaDataset with train/test split 
 """
 
-CUSTOM_SPLIT_DATASET_FOLDER = 'data/MetaShift/Domain-Generalization-Cat-Dog-pirmii-exp1'
+CUSTOM_SPLIT_DATASET_FOLDER = 'data/MetaShift/Domain-Generalization-Cat-Dog-pirmii-exp4-C'
 
 import pandas as pd 
 import seaborn as sns
@@ -111,7 +111,7 @@ def parse_dataset_scheme(dataset_scheme, node_name_to_img_id,dataset_folder=None
     return community_name_to_img_id, all_img_id
 
 
-def parse_dataset_scheme_preexisting_data(dataset_scheme, node_name_to_img_id,dataset_folder=None, exclude_img_id=set(),include_img_id=set(), split='test', copy=True, trunc_size=2500):
+def parse_dataset_scheme_preexisting_data(dataset_scheme, node_name_to_img_id,dataset_folder=None, exclude_img_id=set(),include_img_id=set(), additional_comms = set(), max_additional_size = 0,split='test', copy=True, trunc_size=2500):
     """
     exclude_img_id contains both trainsg_dupes and test images that we do not want to leak 
     """
@@ -132,6 +132,7 @@ def parse_dataset_scheme_preexisting_data(dataset_scheme, node_name_to_img_id,da
             ##################################
             # Iterate node_name: e.g., 'cat(cup)', 'cat(sofa)', 'cat(chair)'
             ##################################
+            print("community name: ", community_name)
             for node_name in dataset_scheme[subject_str][community_name]:
                 # print("node name: ", node_name)
                 community_name_to_img_id[community_name].update(node_name_to_img_id[node_name] - exclude_img_id_local)
@@ -139,10 +140,41 @@ def parse_dataset_scheme_preexisting_data(dataset_scheme, node_name_to_img_id,da
             community_name_to_img_id[community_name] = community_name_to_img_id[community_name].intersection(include_img_id)
             # print("community_name_to_img_id after intersection: ", len(community_name_to_img_id[community_name]))
             community_name_to_img_id[community_name] = set(shuffle_and_truncate(community_name_to_img_id[community_name], trunc_size))
-            # print("community_name_to_img_id after truncation: ", len(community_name_to_img_id[community_name]))
+            print("community_name_to_img_id after truncation: ", len(community_name_to_img_id[community_name]))
 
             exclude_img_id_local.update(community_name_to_img_id[community_name])
             all_img_id.update(community_name_to_img_id[community_name])
+        if max_additional_size > 0:
+            for community_name in dataset_scheme[subject_str]:
+                max_additional_size = int(max_additional_size)
+                print("max_additional_size: ", max_additional_size)
+                additional_size = int(max_additional_size)
+                additional_imgs = set()
+                print(" **** additional training data *** ")
+                for node_name in additional_comms[subject_str]:
+                    print("node name: ", node_name)
+                    additional_imgs.update(node_name_to_img_id[node_name] - exclude_img_id_local)
+                    print("additional image size: ", len(additional_imgs))
+                    additional_imgs = additional_imgs.intersection(include_img_id)
+                    print("additional image size after intersection with irm: ", len(additional_imgs))
+                    additional_imgs = set(shuffle_and_truncate(additional_imgs, additional_size))
+                    all_img_id.update(additional_imgs)
+                    exclude_img_id_local.update(additional_imgs)
+                    print("additional image size after truncation: ", len(additional_imgs))
+                    if len(additional_imgs) < max_additional_size:
+                        additional_size = max_additional_size - len(additional_imgs) 
+                if len(additional_imgs) < max_additional_size:
+                    ## take more data to fill in
+                    ## remaining to add: 
+                    rm_size = max_additional_size - len(additional_imgs) 
+                    rm_imgs = include_img_id-all_img_id
+                    community_name_to_img_id[community_name].update(set(shuffle_and_truncate(rm_imgs, rm_size)))
+                    exclude_img_id_local.update(community_name_to_img_id[community_name])
+                    all_img_id.update(community_name_to_img_id[community_name])
+
+                community_name_to_img_id[community_name].update(additional_imgs)
+                print("community_name_to_img_id after additions: ", len(community_name_to_img_id[community_name]))
+
         ##################################
         # Iterate community_name: e.g., cat(sofa)
         ##################################
@@ -268,30 +300,7 @@ def generate_splitted_metadaset():
         subject_str_to_Graphs[subject_str] = G
 
 
-    train_set_scheme_pirm = {
-        # Note: these comes from copy-pasting the community detection results of cat & dog. 
-        'cat': [
-            # The cat training data is always cat(\emph{sofa + bed}) 
-            'cat(cup)', 'cat(sofa)', 'cat(chair)',
-            'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'],
-        'dog': [
-             # Experiment 1: the dog training data is dog(\emph{cabinet + bed}) communities, and its distance to dog(\emph{shelf}) is $d$=0.44. 
-            'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)', 
-            'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)' ]
-        # 'dog': [
-            #   Experiment 1: the dog training data is dog(\emph{cabinet + bed}) communities, and its distance to dog(\emph{shelf}) is $d$=0.44. 
-            # 'dog(shelf)', 'dog(computer)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(desk)', 'dog(lamp)', 'dog(couch)', 'dog(sofa)', 'dog(television)' ]
-           
-            # # Experiment 2: the dog training data is dog(\emph{bag + box}), and its distance to dog(\emph{shelf}) is $d$=0.71. 
-            # 'dog': ['dog(bag)', 'dog(backpack)', 'dog(purse)','dog(water)',
-            # 'dog(box)', 'dog(container)', 'dog(food)', 'dog(table)', 'dog(plate)', 'dog(cup
-            # Experiment 3: the dog training data is dog(\emph{bench + bike}) with distance $d$=1.12
-            # 'dog':['dog(bench)', 'dog(trash can)' ,'dog(basket)', 'dog(woman)', 'dog(bike)', 'dog(bicycle)']
-
-            # Experiment 4: the dog training data is dog(\emph{boat + surfboard}) with distance $d$=1.43.   
-            # 'dog':['dog(frisbee)', 'dog(rope)', 'dog(flag)', 'dog(trees)', 'dog(boat)', 'dog(water)', 'dog(surfboard)', 'dog(sand)','dog(ball)','dog(grass)','dog(boy)','dog(dirt)']
-        
-    }
+    
     test_set_scheme = {
         'cat': {
             'cat(shelf)': {'cat(container)', 'cat(shelf)', 'cat(vase)', 'cat(bowl)'},
@@ -325,7 +334,8 @@ def generate_splitted_metadaset():
     test_size = 100 #80
     # sub_train_size = 60 #120
     sub_train_size = 100
-    val_sub_size = 50
+    val_sub_size = 40
+    add_p = 0.25
 
     dataset_folder = CUSTOM_SPLIT_DATASET_FOLDER+'/p1'
     test_community_name_to_img_id, test_all_img_id = parse_dataset_scheme(test_set_scheme, node_name_to_img_id,dataset_folder=dataset_folder, exclude_img_id=trainsg_dupes, split='test',trunc_size=test_size)
@@ -347,8 +357,21 @@ def generate_splitted_metadaset():
         }, 
         'dog': {
             # Experiment 1: the dog training data is dog(\emph{cabinet + bed}) communities, and its distance to dog(\emph{shelf}) is $d$=0.44. 
-            'dog(P1)': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
-            'dog(P2)': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}
+            # 'dog(P1)': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
+            # 'dog(P2)': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}
+        
+            # Experiment 2: 
+            # 'dog(P1)': {'dog(bag)', 'dog(backpack)', 'dog(purse)','dog(suitcase)','dog(jacket)'},
+            # 'dog(P2)': {'dog(box)', 'dog(container)', 'dog(food)', 'dog(table)', 'dog(plate)', 'dog(cup)','dog(basket)','dog(pole)'} ,
+            
+            # Experiment 3: the dog training data is dog(\emph{bench + bike}) with distance $d$=1.12
+            # 'dog(P1)': {'dog(bench)', 'dog(trash can)','dog(fence)','dog(trees)','dog(frisbee)','dog(truck)'} ,
+            # 'dog(P2)': {'dog(basket)', 'dog(woman)', 'dog(bike)', 'dog(bicycle)','dog(car)','dog(bottle)'},
+
+            # Experiment 4: the dog training data is dog(\emph{boat + surfboard}) with distance $d$=1.43.   
+            'dog(P1)': {'dog(frisbee)', 'dog(rope)', 'dog(flag)', 'dog(trees)', 'dog(boat)','dog(dirt)'},
+            'dog(P2)': {'dog(water)', 'dog(surfboard)', 'dog(sand)', 'dog(ball)','dog(cap)','dog(shirt)','dog(glasses)'}
+        
         }
     }
     val_set_scheme = {
@@ -360,8 +383,20 @@ def generate_splitted_metadaset():
         }, 
         'dog': {
             # Experiment 1: the dog training data is dog(\emph{cabinet + bed}) communities, and its distance to dog(\emph{shelf}) is $d$=0.44. 
-            'dog(P1)_val': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
-            'dog(P2)_val': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}
+            # 'dog(P1)_val': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
+            # 'dog(P2)_val': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}
+
+             # Experiment 2: 
+            # 'dog(P1)_val':  {'dog(bag)', 'dog(backpack)', 'dog(purse)','dog(suitcase)','dog(jacket)'},
+            # 'dog(P2)_val': {'dog(box)', 'dog(container)', 'dog(food)', 'dog(table)', 'dog(plate)', 'dog(cup)','dog(basket)','dog(pole)'} 
+
+            # Experiment 3: the dog training data is dog(\emph{bench + bike}) with distance $d$=1.12
+            # 'dog(P1)_val': {'dog(bench)', 'dog(trash can)','dog(fence)','dog(trees)','dog(frisbee)','dog(truck)'} ,
+            # 'dog(P2)_val': {'dog(basket)', 'dog(woman)', 'dog(bike)', 'dog(bicycle)','dog(car)','dog(bottle)'}
+
+            # Experiment 4: the dog training data is dog(\emph{boat + surfboard}) with distance $d$=1.43.   
+            'dog(P1)_val': {'dog(frisbee)', 'dog(rope)', 'dog(flag)', 'dog(trees)', 'dog(boat)','dog(dirt)'},
+            'dog(P2)_val': {'dog(water)', 'dog(surfboard)', 'dog(sand)', 'dog(ball)','dog(cap)','dog(shirt)','dog(glasses)'}
         }
     }
 
@@ -402,20 +437,17 @@ def generate_splitted_metadaset():
     print("community_name_to_img_id.keys()", community_name_to_img_id.keys())
     community_name_to_img_id.update(additional_test_community_name_to_img_id)
     dog_community_name_list = sorted(train_set_scheme['dog']['dog(P1)']) +sorted(train_set_scheme['dog']['dog(P2)'])+ sorted(test_set_scheme['dog']) + sorted(additional_test_set_scheme['dog']) 
+    dog_community_name_list = sorted(train_set_scheme['dog'])+ sorted(test_set_scheme['dog']) + sorted(additional_test_set_scheme['dog']) 
     N_sets = len(community_name_to_img_id.keys())
+    # N_sets = len(dog_community_name_list)
     Adjacency_matrix = np.ones((N_sets, N_sets))
     for i, ii in enumerate(community_name_to_img_id.keys()):
-        # print("ii: ",ii)
         
         for j,jj in enumerate(community_name_to_img_id.keys()):
             set_A = community_name_to_img_id[ii] - trainsg_dupes
             set_B = community_name_to_img_id[jj] - trainsg_dupes
             overlap_set = set_A.intersection(set_B)
-            if ii == 'dog(shelf)':
-                print('jj:',jj)
-                print("overlap set length: ", len(overlap_set))
-                print("length ii: ", len(set_A), " length jj: ",len(set_B))
-                print('**')
+  
             if len(overlap_set) == 0:
                 edge_weight = 0
             else: 
@@ -426,6 +458,7 @@ def generate_splitted_metadaset():
     # G_dog_all, dog_pars_sc, Adjacency_matrix = build_subset_graph(dog_community_name_list, community_name_to_img_id, trainsg_dupes=set(), subject_str=None,seed=0)
     labels = []
     for i, x in enumerate(community_name_to_img_id.keys()):
+    # for i, x in enumerate(dog_community_name_list):
         # add a \n
         labels.append(x.replace('(', '\n('))
     A_pd = pd.DataFrame(np.matrix(Adjacency_matrix), index=labels, columns=labels)
@@ -434,7 +467,6 @@ def generate_splitted_metadaset():
     spectral_pos = nx.spectral_layout(
         G=G_dog_all, 
         dim=5,
-        # dim = (3,2)
         )
     
     dists = []
@@ -451,52 +483,142 @@ def generate_splitted_metadaset():
     print(f"Distance from {subs[0]} is {dists[0]}\nDistance from {subs[1]} is {dists[1]} ")
     min_dist = np.argmin(dists)
     min_partition = subs[min_dist]
+
+    max_dist = np.argmax(dists)
+    max_partition = subs[max_dist]
+
     print(f"minimum-distant partition {min_partition} with distance of {dists[min_dist]} with communities: ")
     print("\t",train_set_scheme['dog'][min_partition])
+    
+    print()
+    print()
+    print("=============== ADDITIONAL DATA SAMPLES FROM SECOND ENV ==============")
+    test_community_name_to_img_id_all, _ = parse_dataset_scheme(test_set_scheme, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='test', copy=False)
+    # train_community_name_to_img_id, _ = parse_dataset_scheme(train_set_scheme_all, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='train', copy=False)
+    additional_test_community_name_to_img_id, _ = parse_dataset_scheme(additional_test_set_scheme, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='test', copy=False)
 
+    community_name_to_img_id = test_community_name_to_img_id_all.copy()
+    community_name_to_img_id.update(train_community_name_to_img_id)
+    # community_name_to_img_id.update(val_community_name_to_img_id)
+    community_name_to_img_id.update(additional_test_community_name_to_img_id)    
+    
+    for p_com in train_set_scheme['dog'][max_partition]:
+        community_name_to_img_id.update({p_com:node_name_to_img_id[p_com]})
+    
+    for p_com in train_set_scheme['cat'][f"cat({max_partition.split('(')[1]}"]:
+        community_name_to_img_id.update({p_com:node_name_to_img_id[p_com]})
+
+    N_sets = len(community_name_to_img_id.keys())
+    # N_sets = len(dog_community_name_list)
+    Adjacency_matrix = np.ones((N_sets, N_sets))
+    for i, ii in enumerate(community_name_to_img_id.keys()):
+    # for i, ii in enumerate(dog_community_name_list):
+        # print("ii: ",ii)
+        
+        for j,jj in enumerate(community_name_to_img_id.keys()):
+        # for j,jj in enumerate(dog_community_name_list):
+            set_A = community_name_to_img_id[ii] - trainsg_dupes
+            set_B = community_name_to_img_id[jj] - trainsg_dupes
+            overlap_set = set_A.intersection(set_B)
+  
+            if len(overlap_set) == 0:
+                edge_weight = 0
+            else: 
+                edge_weight = len(overlap_set) / min( len(set_A), len(set_B) )
+            Adjacency_matrix[i,j] = Adjacency_matrix[j,i] = edge_weight
+            
+    labels = []
+    for i, x in enumerate(community_name_to_img_id.keys()):
+    # for i, x in enumerate(dog_community_name_list):
+        # add a \n
+        labels.append(x.replace('(', '\n('))
+    A_pd = pd.DataFrame(np.matrix(Adjacency_matrix), index=labels, columns=labels)
+    G_dog_all = nx.from_pandas_adjacency(A_pd)
+    print("Nodes: ", G_dog_all.nodes())
+    spectral_pos = nx.spectral_layout(
+        G=G_dog_all, 
+        dim=5,
+        # dim = (3,2)
+        )
+    
+    dists = []
+    subs = []
+    
+    for sub in train_set_scheme['dog'][max_partition]:
+        subs.append(sub)
+        dist = np.linalg.norm(spectral_pos[sub.replace('(','\n(')] - spectral_pos['dog\n(shelf)'])
+        dists.append(dist)        
+    subs = np.array(subs)
+    dog_sorted_additional_comms = subs[np.argsort(dists)]
+
+    dists = []
+    subs = []
+    
+    for sub in train_set_scheme['cat'][f"cat({max_partition.split('(')[1]}"]:
+        subs.append(sub)
+        dist = np.linalg.norm(spectral_pos[sub.replace('(','\n(')] - spectral_pos['cat\n(shelf)'])
+        dists.append(dist)        
+    subs = np.array(subs)
+    cat_sorted_additional_comms = subs[np.argsort(dists)]
+
+    # print("cat_sorted_additional_comms: ", cat_sorted_additional_comms)
     print("============ spectral clustering partitioning for ==============")
     
     com_to_img_id = {}
     exclude_img_id=test_all_img_id.union(trainsg_dupes)
-    print("exclude images length: ", len(exclude_img_id))
     
+    # cat_sub_coms = list(cat_sorted_additional_comms)
+    # dog_sub_coms = list(dog_sorted_additional_comms)
+
     cat_sub_coms = []
     dog_sub_coms = []
     for com_i in train_set_scheme['dog'][min_partition]:
-        com_i = com_i.split('(')[-1][:-1]
         dog_sub_coms.append(com_i)
+    
     for com_i in train_set_scheme['cat'][f"cat({min_partition.split('(')[1]}"]:
-        com_i = com_i.split('(')[-1][:-1]
         cat_sub_coms.append(com_i)
 
     G, dog_clusters, adj_training = build_subset_graph(dog_sub_coms, node_name_to_img_id, trainsg_dupes=trainsg_dupes, subject_str=None, seed=0)
     G, cat_clusters, adj_training = build_subset_graph(cat_sub_coms, node_name_to_img_id, trainsg_dupes=trainsg_dupes, subject_str=None, seed=0)
+
+     
     print("cat communities: ", cat_clusters)
     print("dog communities: ", dog_clusters)
 
+    cat_clusters[0] = [i.replace('\n(','(') for i in cat_clusters[0]]
+    cat_clusters[1] = [i.replace('\n(','(') for i in cat_clusters[1]]
+
+    dog_clusters[0] = [i.replace('\n(','(') for i in dog_clusters[0]]
+    dog_clusters[1] = [i.replace('\n(','(') for i in dog_clusters[1]]
+
+    print("cat communities: ", cat_clusters)
+    print("dog communities: ", dog_clusters)
 
     ### writing down the new partitions of the closer cluster
 
     train_set_scheme_P1 = {'dog':{
-        'dog(P11)':set([ f'dog({x})' for x in dog_clusters[0]]),
-        'dog(P12)':set([ f'dog({x})' for x in dog_clusters[1]])
+        'dog(P11)': dog_clusters[0],
+        'dog(P12)': dog_clusters[1]
         },
     'cat':{
-        'cat(P11)':set([ f'cat({x})'  for x in cat_clusters[0]]),
-        'cat(P12)':set([ f'cat({x})'  for x in cat_clusters[1]])
+        'cat(P11)': cat_clusters[0],
+        'cat(P12)': cat_clusters[1]
             }}
     val_set_scheme_P1 = {'dog':{
-        'dog(P11)_val':set([ f'dog({x})' for x in dog_clusters[0]]),
-        'dog(P12)_val':set([ f'dog({x})' for x in dog_clusters[1]])
+        'dog(P11)_val': dog_clusters[0],
+        'dog(P12)_val': dog_clusters[1]
         },
     'cat':{
-        'cat(P11)_val':set([ f'cat({x})'  for x in cat_clusters[0]]),
-        'cat(P12)_val':set([ f'cat({x})'  for x in cat_clusters[1]])
+        'cat(P11)_val': cat_clusters[0],
+        'cat(P12)_val': cat_clusters[1]
             }}
     
+    additional_comms = {"dog":dog_sorted_additional_comms, 
+    "cat":cat_sorted_additional_comms}
+    
     dataset_folder = CUSTOM_SPLIT_DATASET_FOLDER+'/p1'
-    train_community_name_to_img_id_P1, train_all_img_id_P1 = parse_dataset_scheme_preexisting_data(train_set_scheme_P1, node_name_to_img_id,dataset_folder=dataset_folder, exclude_img_id=test_all_img_id.union(trainsg_dupes), include_img_id=train_all_img_id, split='train',trunc_size=int(sub_train_size/2))
-    val_community_name_to_img_id_P1, val_all_img_id_P1 = parse_dataset_scheme_preexisting_data(val_set_scheme_P1, node_name_to_img_id,dataset_folder=dataset_folder, exclude_img_id=test_all_img_id.union(trainsg_dupes).union(train_all_img_id_P1), include_img_id=val_all_img_id, split='val_out_of_domain',trunc_size=int(val_sub_size/2))
+    train_community_name_to_img_id_P1, train_all_img_id_P1 = parse_dataset_scheme_preexisting_data(train_set_scheme_P1, node_name_to_img_id,dataset_folder=dataset_folder, exclude_img_id=test_all_img_id.union(trainsg_dupes), include_img_id=train_all_img_id, additional_comms=additional_comms,max_additional_size=(sub_train_size/2)*add_p, split='train',trunc_size=int(sub_train_size/2))
+    val_community_name_to_img_id_P1, val_all_img_id_P1 = parse_dataset_scheme_preexisting_data(val_set_scheme_P1, node_name_to_img_id,dataset_folder=dataset_folder, exclude_img_id=test_all_img_id.union(trainsg_dupes).union(train_all_img_id_P1), include_img_id=val_all_img_id, additional_comms= additional_comms,max_additional_size=(val_sub_size/2)*add_p, split='val_out_of_domain',trunc_size=int(val_sub_size/2))
     
         
     os.makedirs(os.path.dirname(dataset_folder + '/' + 'imageID_to_group.pkl'), exist_ok=True)
@@ -529,391 +651,8 @@ def generate_splitted_metadaset():
         copy_images(
             dataset_folder, 'val_out_of_domain', dst, use_symlink=False,
             img_IDs =  val_community_name_to_img_id_P1[sub_str]
-            )
-
-
-    exit(0) 
+            )    
     
-    print("============ spectral clustering partitioning ==============")
-    # train_community_name_to_img_id, train_all_img_id = parse_dataset_scheme_community_name(train_set_scheme, node_name_to_img_id, exclude_img_id=test_all_img_id.union(trainsg_dupes), split='train', copy=False)
-    com_to_img_id = {}
-    exclude_img_id=test_all_img_id.union(trainsg_dupes)
-    print("exclude images length: ", len(exclude_img_id))
-    common_sub_communities = set()
-    cat_sub_coms = []
-    dog_sub_coms = []
-    # for a in ['cat','dog']:
-    #     for com in train_set_scheme_pirm[a]:
-    #         com_i = com.split('(')[-1][:-1]
-    #         common_sub_communities.add(com_i)
-    
-    for com_i in train_set_scheme_pirm['dog']:
-        com_i = com_i.split('(')[-1][:-1]
-        dog_sub_coms.append(com_i)
-    for com_i in train_set_scheme_pirm['cat']:
-        com_i = com_i.split('(')[-1][:-1]
-        cat_sub_coms.append(com_i)
-    # print("communities: ",common_sub_communities)
-
-    G, dog_clusters, adj_training = build_subset_graph(dog_sub_coms, train_community_name_to_img_id, trainsg_dupes=trainsg_dupes, subject_str=None, seed=0)
-    G, cat_clusters, adj_training = build_subset_graph(cat_sub_coms, train_community_name_to_img_id, trainsg_dupes=trainsg_dupes, subject_str=None, seed=0)
-    print("cat communities: ", cat_clusters)
-    print("dog communities: ", dog_clusters)
-    train_set_scheme_P1 = {'dog':{
-        'dog(P11)':set([ f'dog({x})' for x in dog_clusters[0]]),
-        'dog(P12)':set([ f'dog({x})' for x in dog_clusters[1]])
-        },
-    'cat':{
-        'cat(P11)':set([ f'cat({x})'  for x in cat_clusters[0]]),
-        'cat(P12)':set([ f'cat({x})'  for x in cat_clusters[1]])
-            }}
-    val_set_scheme_P1 = {'dog':{
-        'dog(P11)_val':set([ f'dog({x})' for x in dog_clusters[0]]),
-        'dog(P12)_val':set([ f'dog({x})' for x in dog_clusters[1]])
-        },
-    'cat':{
-        'cat(P11)_val':set([ f'cat({x})'  for x in cat_clusters[0]]),
-        'cat(P12)_val':set([ f'cat({x})'  for x in cat_clusters[1]])
-            }}
-    
-    dataset_folder = CUSTOM_SPLIT_DATASET_FOLDER+'/p1'
-    train_community_name_to_img_id_P1, train_all_img_id_P1 = parse_dataset_scheme_preexisting_data(train_set_scheme_P1, node_name_to_img_id,dataset_folder=dataset_folder, exclude_img_id=test_all_img_id.union(trainsg_dupes), include_img_id=train_all_img_id, split='train',trunc_size=sub_train_size)
-    val_community_name_to_img_id_P1, val_all_img_id_P1 = parse_dataset_scheme_preexisting_data(val_set_scheme_P1, node_name_to_img_id,dataset_folder=dataset_folder, exclude_img_id=test_all_img_id.union(trainsg_dupes).union(train_all_img_id_P1), include_img_id=val_all_img_id, split='val_out_of_domain',trunc_size=val_sub_size)
-    
-    # print("train_community_name_to_img_id keys: ",train_community_name_to_img_id_P1.keys())
-    os.makedirs(os.path.dirname(dataset_folder + '/' + 'imageID_to_group.pkl'), exist_ok=True)
-    
-    with open(dataset_folder + '/' + 'imageID_to_group.pkl', 'wb') as handle:
-        imageID_to_group = dict()
-        group_to_imageID = train_community_name_to_img_id_P1.copy()
-        group_to_imageID.update(test_community_name_to_img_id)
-        group_to_imageID.update(val_community_name_to_img_id_P1)
-        for group_str in group_to_imageID:
-            print('group string: ', group_str,' size: ', len(group_to_imageID[group_str]))
-            for imageID in group_to_imageID[group_str]:
-                if imageID not in imageID_to_group:
-                    imageID_to_group[imageID] = [group_str] 
-                else:
-                    imageID_to_group[imageID].append(group_str)
-        pickle.dump(imageID_to_group, handle)
-        print('end dumping ### ')
-    
-    for sub_str in train_community_name_to_img_id:
-        sub_a = sub_str.split('(')[0]
-        dst = sub_a+'/'+sub_str
-        copy_images(
-            dataset_folder, 'train', dst, use_symlink=False,
-            img_IDs =  train_community_name_to_img_id[sub_str]
-            )
-    for sub_str in val_community_name_to_img_id:
-        sub_a = sub_str.split('(')[0]
-        dst = sub_a+'/'+sub_str
-        copy_images(
-            dataset_folder, 'val_out_of_domain', dst, use_symlink=False,
-            img_IDs =  val_community_name_to_img_id[sub_str]
-            )
-
-    exit(0)
-    G, par_sc_1, Adjacency_matrix = build_subset_graph(animals_clusters[0], com_to_img_id_1, trainsg_dupes=set(), subject_str=None,seed=0)
-    G, par_sc_2, Adjacency_matrix = build_subset_graph(animals_clusters[1], com_to_img_id_2, trainsg_dupes=set(), subject_str=None,seed=0)
-    print("======== clusters ========")
-    print(par_sc_1)
-    print(par_sc_2)
-
-    train_set_scheme_P1 = {'dog':{
-        'dog(P11)':set([ f'dog({x})' for x in par_sc_1[0]]),
-        'dog(P12)':set([ f'dog({x})' for x in par_sc_1[1]])
-        },
-    'cat':{
-        'cat(P11)':set([ f'cat({x})'  for x in par_sc_1[0]]),
-        'cat(P12)':set([ f'cat({x})'  for x in par_sc_1[1]])
-            }}
-    val_set_scheme_P1 = {'dog':{
-        'dog(P11)_val':set([ f'dog({x})' for x in par_sc_1[0]]),
-        'dog(P12)_val':set([ f'dog({x})' for x in par_sc_1[1]])
-        },
-    'cat':{
-        'cat(P11)_val':set([ f'cat({x})'  for x in par_sc_1[0]]),
-        'cat(P12)_val':set([ f'cat({x})'  for x in par_sc_1[1]])
-            }}
-    com_to_img_id_1 = {}
-    for a in par_sc_1:
-        for com_i in a:
-            cat_com = f'cat({com_i})'
-            dog_com = f'dog({com_i})'
-            cat_sub = node_name_to_img_id[cat_com]-exclude_img_id
-            dog_sub = node_name_to_img_id[dog_com]-exclude_img_id
-            com_to_img_id_1[f'cat({com_i})'] = cat_sub
-            com_to_img_id_1[f'dog({com_i})'] = dog_sub
-
-    
-    train_set_scheme_P2 = {'dog':{
-        'dog(P21)':set([ f'dog({x})' for x in par_sc_2[0]]),
-        'dog(P22)':set([ f'dog({x})' for x in par_sc_2[1]])
-        },
-    'cat':{
-        'cat(P21)':set([ f'cat({x})' for x in par_sc_2[0]]),
-        'cat(P22)':set([ f'cat({x})' for x in par_sc_2[1]])
-            }}
-    
-    val_set_scheme_P2 = {'dog':{
-        'dog(P21)_val':set([ f'dog({x})' for x in par_sc_2[0]]),
-        'dog(P22)_val':set([ f'dog({x})' for x in par_sc_2[1]])
-        },
-    'cat':{
-        'cat(P21)_val':set([ f'cat({x})' for x in par_sc_2[0]]),
-        'cat(P22)_val':set([ f'cat({x})' for x in par_sc_2[1]])
-            }}
-
-    com_to_img_id_2 = {}
-    for a in par_sc_2:
-        for com_i in a:
-            cat_com = f'cat({com_i})'
-            dog_com = f'dog({com_i})'
-            cat_sub = node_name_to_img_id[cat_com]-exclude_img_id
-            dog_sub = node_name_to_img_id[dog_com]-exclude_img_id
-            com_to_img_id_2[f'cat({com_i})'] = cat_sub
-            com_to_img_id_2[f'dog({com_i})'] = dog_sub
-
-    dataset_folder = CUSTOM_SPLIT_DATASET_FOLDER+'/p1'
-    train_community_name_to_img_id_P1, train_all_img_id_P1 = parse_dataset_scheme(train_set_scheme_P1, com_to_img_id_1,dataset_folder=dataset_folder, exclude_img_id=exclude_img_id, split='train',trunc_size=sub_train_size)
-    val_community_name_to_img_id_P1, val_all_img_id_P1 = parse_dataset_scheme(val_set_scheme_P1, com_to_img_id_1,dataset_folder=dataset_folder, exclude_img_id=train_all_img_id_P1, split='val_out_of_domain',trunc_size=val_sub_size)
-
-    print("train_community_name_to_img_id keys: ",train_community_name_to_img_id_P1.keys())
-    os.makedirs(os.path.dirname(dataset_folder + '/' + 'imageID_to_group.pkl'), exist_ok=True)
-    
-    with open(dataset_folder + '/' + 'imageID_to_group.pkl', 'wb') as handle:
-        imageID_to_group = dict()
-        group_to_imageID = train_community_name_to_img_id_P1.copy()
-        group_to_imageID.update(test_community_name_to_img_id)
-        group_to_imageID.update(val_community_name_to_img_id_P1)
-        for group_str in group_to_imageID:
-            print('group string: ', group_str,' size: ', len(group_to_imageID[group_str]))
-            for imageID in group_to_imageID[group_str]:
-                if imageID not in imageID_to_group:
-                    imageID_to_group[imageID] = [group_str] 
-                else:
-                    imageID_to_group[imageID].append(group_str)
-        pickle.dump(imageID_to_group, handle)
-        print('end dumping ### ')
-    
-    print(os.path.exists(dataset_folder + '/' + 'imageID_to_group.pkl'))
-    print(dataset_folder + '/' + 'imageID_to_group.pkl')
-    
-    dataset_folder = CUSTOM_SPLIT_DATASET_FOLDER+'/p2'
-    train_community_name_to_img_id_P2, train_all_img_id_P2 = parse_dataset_scheme(train_set_scheme_P2, com_to_img_id_2,dataset_folder=dataset_folder, exclude_img_id=exclude_img_id.union(train_all_img_id_P1).union(val_all_img_id_P1), split='train',trunc_size=sub_train_size)
-    val_community_name_to_img_id_P2, val_all_img_id_P2 = parse_dataset_scheme(val_set_scheme_P2, com_to_img_id_2,dataset_folder=dataset_folder, exclude_img_id=train_all_img_id_P2, split='val_out_of_domain',trunc_size=val_sub_size)
-
-    print(train_community_name_to_img_id_P2.keys())
-    os.makedirs(os.path.dirname(dataset_folder + '/' + 'imageID_to_group.pkl'), exist_ok=True)
-    
-    with open(dataset_folder + '/' + 'imageID_to_group.pkl', 'wb') as handle:
-        imageID_to_group = dict()
-        group_to_imageID = train_community_name_to_img_id_P2.copy()
-        group_to_imageID.update(test_community_name_to_img_id)
-        group_to_imageID.update(val_community_name_to_img_id_P2)
-        for group_str in group_to_imageID:
-            print('group string: ', group_str,' size: ', len(group_to_imageID[group_str]))
-            for imageID in group_to_imageID[group_str]:
-                if imageID not in imageID_to_group:
-                    imageID_to_group[imageID] = [group_str] 
-                else:
-                    imageID_to_group[imageID].append(group_str)
-        pickle.dump(imageID_to_group, handle)
-        print('end dumping ### ')
-    print("### File exists? ")
-    print(os.path.exists(dataset_folder + '/' + 'imageID_to_group.pkl'))
-    print(dataset_folder + '/' + 'imageID_to_group.pkl')
-    
-    train_set_scheme_all = {
-        'dog':{
-        'dog(P1)':set([ f'dog({x})' for x in animals_clusters[0]]),
-        'dog(P2)':set([ f'dog({x})' for x in animals_clusters[1]])
-        },
-    'cat':{
-        'cat(P1)':set([ f'cat({x})'  for x in animals_clusters[0]]),
-        'cat(P2)':set([ f'cat({x})'  for x in animals_clusters[1]])
-            }
-    }   
-    
-    com_to_img_id_all = com_to_img_id_1.copy()
-    com_to_img_id_all.update(com_to_img_id_2)
-    train_community_name_to_img_id = {}
-
-    dataset_folder = CUSTOM_SPLIT_DATASET_FOLDER+'/irm'
-    # train_community_name_to_img_id, train_all_img_id = parse_dataset_scheme(train_set_scheme_all,com_to_img_id_all,dataset_folder=dataset_folder, exclude_img_id=test_all_img_id.union(trainsg_dupes), split='train',trunc_size=100)
-
-    os.makedirs(os.path.dirname(dataset_folder + '/' + 'imageID_to_group.pkl'), exist_ok=True)
-    train_community_name_to_img_id = {
-        'dog(P1)':train_community_name_to_img_id_P1['dog(P11)'].union(train_community_name_to_img_id_P1['dog(P12)']),
-        'dog(P2)':train_community_name_to_img_id_P2['dog(P21)'].union(train_community_name_to_img_id_P2['dog(P22)']),
-        'cat(P1)':train_community_name_to_img_id_P1['cat(P11)'].union(train_community_name_to_img_id_P1['cat(P12)']),
-        'cat(P2)':train_community_name_to_img_id_P2['cat(P21)'].union(train_community_name_to_img_id_P2['cat(P22)']),
-    }
-
-    val_community_name_to_img_id = {
-        'dog(P1)_val':val_community_name_to_img_id_P1['dog(P11)_val'].union(val_community_name_to_img_id_P1['dog(P12)_val']),
-        'dog(P2)_val':val_community_name_to_img_id_P2['dog(P21)_val'].union(val_community_name_to_img_id_P2['dog(P22)_val']),
-        'cat(P1)_val':val_community_name_to_img_id_P1['cat(P11)_val'].union(val_community_name_to_img_id_P1['cat(P12)_val']),
-        'cat(P2)_val':val_community_name_to_img_id_P2['cat(P21)_val'].union(val_community_name_to_img_id_P2['cat(P22)_val']),
-    }
-    with open(dataset_folder + '/' + 'imageID_to_group.pkl', 'wb') as handle:
-        imageID_to_group = dict()
-        group_to_imageID = train_community_name_to_img_id.copy()
-        group_to_imageID.update(test_community_name_to_img_id)
-        group_to_imageID.update(val_community_name_to_img_id)
-        for group_str in group_to_imageID:
-            print('group string: ', group_str,' size: ', len(group_to_imageID[group_str]))
-            for imageID in group_to_imageID[group_str]:
-                if imageID not in imageID_to_group:
-                    imageID_to_group[imageID] = [group_str] 
-                else:
-                    imageID_to_group[imageID].append(group_str)
-        pickle.dump(imageID_to_group, handle)
-        print('end dumping ### ')
-    print("### File exists? ")
-    print(os.path.exists(dataset_folder + '/' + 'imageID_to_group.pkl'))
-    print(dataset_folder + '/' + 'imageID_to_group.pkl')
-
-    # exit(0)
-
-    ##################################
-
-    for sub_str in train_community_name_to_img_id:
-        sub_a = sub_str.split('(')[0]
-        dst = sub_a+'/'+sub_str
-        copy_images(
-            dataset_folder, 'train', dst, use_symlink=False,
-            img_IDs =  train_community_name_to_img_id[sub_str]
-            )
-    for sub_str in val_community_name_to_img_id:
-        sub_a = sub_str.split('(')[0]
-        dst = sub_a+'/'+sub_str
-        copy_images(
-            dataset_folder, 'val_out_of_domain', dst, use_symlink=False,
-            img_IDs =  val_community_name_to_img_id[sub_str]
-            )
-
-    
-    ##################################
-    # **Quantifying the distance between train and test subsets**
-    # Please be advised that before making MetaShift public, 
-    # we have made further efforts to reduce the label errors propagated from Visual Genome. 
-    # Therefore, we expect a slight change in the exact experiment numbers.  
-    ##################################
-    
-    print('========== Quantifying the distance between train and test subsets ==========')
-    test_community_name_to_img_id, _ = parse_dataset_scheme(test_set_scheme, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='test', copy=False)
-    # train_community_name_to_img_id, _ = parse_dataset_scheme(train_set_scheme_all, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='train', copy=False)
-    additional_test_community_name_to_img_id, _ = parse_dataset_scheme(additional_test_set_scheme, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='test', copy=False)
-    
-    # exit(0)
-    community_name_to_img_id = test_community_name_to_img_id.copy()
-    community_name_to_img_id.update(train_community_name_to_img_id)
-    # community_name_to_img_id.update(val_community_name_to_img_id)
-    print("community_name_to_img_id.keys()", community_name_to_img_id.keys())
-    community_name_to_img_id.update(additional_test_community_name_to_img_id)
-    # print(community_name_to_img_id.keys())
-    dog_community_name_list = sorted(train_set_scheme_all['dog']) + sorted(test_set_scheme['dog']) + sorted(additional_test_set_scheme['dog'])
-    # dog_community_name_list = sorted(train_set_scheme['dog']) + sorted(test_set_scheme['dog'])
-    N_sets = len(community_name_to_img_id.keys())
-    Adjacency_matrix = np.ones((N_sets, N_sets))
-    for i, ii in enumerate(community_name_to_img_id.keys()):
-        # print("ii: ",ii)
-        
-        for j,jj in enumerate(community_name_to_img_id.keys()):
-            set_A = community_name_to_img_id[ii] - trainsg_dupes
-            set_B = community_name_to_img_id[jj] - trainsg_dupes
-            overlap_set = set_A.intersection(set_B)
-            if ii == 'dog(shelf)':
-                print('jj:',jj)
-                print("overlap set length: ", len(overlap_set))
-                print("length ii: ", len(set_A), " length jj: ",len(set_B))
-                print('**')
-            if len(overlap_set) == 0:
-                edge_weight = 0
-            else: 
-                edge_weight = len(overlap_set) / min( len(set_A), len(set_B) )
-            Adjacency_matrix[i,j] = Adjacency_matrix[j,i] = edge_weight
-            
-    # G, pars_sc, Adjacency_matrix = build_subset_graph(dog_community_name_list, community_name_to_img_id, trainsg_dupes=set(), subject_str=None,seed=0)
-    # G_dog_all, dog_pars_sc, Adjacency_matrix = build_subset_graph(dog_community_name_list, community_name_to_img_id, trainsg_dupes=set(), subject_str=None,seed=0)
-    labels = []
-    for i, x in enumerate(community_name_to_img_id.keys()):
-        # add a \n
-        labels.append(x.replace('(', '\n('))
-    A_pd = pd.DataFrame(np.matrix(Adjacency_matrix), index=labels, columns=labels)
-    G_dog_all = nx.from_pandas_adjacency(A_pd)
-    print("Nodes: ", G_dog_all.nodes())
-    spectral_pos = nx.spectral_layout(
-        G=G_dog_all, 
-        dim=5,
-        # dim = (3,2)
-        )
-    
-    dists = []
-    subs = []
-    for sub in train_set_scheme_all['dog']:
-        # print('subset name: ', sub)
-        subs.append(sub)
-        dists.append(np.linalg.norm(spectral_pos[sub.replace('(','\n(')] - spectral_pos['dog\n(shelf)']))
-        # distance_B = np.linalg.norm(spectral_pos[sub.replace('(','\n(')] - spectral_pos['dog\n(shelf)'])
-        
-    
-    print('Distance from {}+{} to {}: {}'.format(
-            subs[0], subs[1], 'dog(shelf)', 
-            0.5 * (dists[0] + dists[1])
-            ))
-    print(f"Distance from {subs[0]} is {dists[0]}\nDistance from {subs[1]} is {dists[1]} ")
-        
-    # exit(0)\
-
-    # communities = set(animals_clusters[0]).copy()
-    # communities.update(set(animals_clusters[1]))
-    # communities.update(test_community_name_to_img_id.keys())
-    # com_to_img_id_all.update(test_community_name_to_img_id)
-
-    # print("communitites", communities)
-
-    # N_sets = len(communities)
-    # Adjacency_matrix = np.ones((N_sets, N_sets))
-    # for i, ii in enumerate(communities):
-    #     print("ii: ",ii)
-    #     setA = set()
-    #     if ('cat' in ii) or ('dog' in ii):
-    #         setA.update(com_to_img_id_all[ii])
-            
-    #     else:
-    #         set_A.update(com_to_img_id_all[f'dog({ii})'])
-    #         set_A.update(com_to_img_id_all[f'cat({ii})'])
-        
-    #     for j,jj in enumerate(communities):
-    #         setB = set()
-    #         if ('cat' in jj) or ('dog' in jj):
-    #             setB.update(com_to_img_id_all[jj])
-            
-    #         else:
-    #             set_B.update(com_to_img_id_all[f'dog({jj})'])
-    #             set_B.update(com_to_img_id_all[f'cat({jj})'])
-    #         overlap_set = set_A.intersection(set_B)
-    #         if len(overlap_set) == 0:
-    #             edge_weight = 0
-    #         else: 
-    #             edge_weight = len(overlap_set) / min( len(set_A), len(set_B) )
-    #         Adjacency_matrix[i,j] = Adjacency_matrix[j,i] = edge_weight
-            
-    # labels = []
-    # for i, x in enumerate(communities):
-    #     # add a \n
-    #     labels.append(x.replace('(', '\n('))
-    # A_pd = pd.DataFrame(np.matrix(Adjacency_matrix), index=labels, columns=labels)
-    # G_dog_all = nx.from_pandas_adjacency(A_pd)
-    # print("=== similarity measure ===")
-    # for com in [animals_clusters[0], animals_clusters[1]]:
-    #     # all_comms = set(new_sub_comms)-set(com)
-    #     cut_comm = nx.cut_size(G_dog_all,'dog\n(shelf)',com,weight='weight')
-    #     print(f'{com}: {cut_comm}')
-    #     # all_cuts.append(cut_comm)
     return
 
 if __name__ == '__main__':
