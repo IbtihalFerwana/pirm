@@ -7,8 +7,13 @@ clear && CUDA_VISIBLE_DEVICES=7 python main_generalization.py --num-domains 2 --
 care: self.group_indices[groups_local][:50]
 """
 MEASURE_SUBSET_INFLUENCE = False
-
+# import Constants from ../../dataset
 SUBJECT_LIST = ['cat','dog']
+# SUBJECT_LIST  = Constants.ONLY_SELECTED_CLASSES 
+# SUBJECT_LIST = ['bus','truck']
+# SUBJECT_LIST = ['elephant','horse']
+# SUBJECT_LIST = ['bowl','cup']
+
 # DOMAINS_TO_GROUPS = {
 #             0: {'cat':['cat_p0'],'dog':['dog_p0']},
 #             1: {'cat':['cat_p1'],'dog':['dog_p1']},
@@ -137,6 +142,7 @@ class SubsetShiftDatasetManager():
                 for subject_str in self.subjects_list:
                     # print("subject str: ", subject_str)
                     groups_local = np.random.choice(self.domain_to_groups[str(domain_idx)][subject_str])
+                    # print(groups_local)
                     sampled_ids = np.random.choice(
                             self.group_indices[groups_local], 
                             size=batch_size,
@@ -207,7 +213,7 @@ def report_every_set_acc(my_dataset, args, split='val'):
     if len(pred_score_all) != len(my_dataset.samples):
         print("length of pred_score_all", len(pred_score_all))
         print("length of data samples ", len(my_dataset.samples))
-    assert len(pred_score_all) == len(my_dataset.samples)
+    # assert len(pred_score_all) == len(my_dataset.samples)
 
     ##################################
     # 3. iterate through all data points, and collect prediction scores, and labels. 
@@ -246,13 +252,19 @@ def report_every_set_acc(my_dataset, args, split='val'):
     for tup in group_accs:
         groups_local, acc, group_size = tup
         info_str = "accuracy {:.3f} \t size: {} \t {}".format(acc, group_size, groups_local)
-        print(info_str)
+        # print(info_str)
         logging.info(info_str)
         info_res = {"groups_local":groups_local,
         "acc":f"{acc:.3f}",
         "size":group_size}
         res_df.append(info_res)
-    details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_bs_{args.batch_size}_partition_details_{split}.json'
+    if (args.experiment == 'ibirm') | (args.experiment == 'p1ibirm') | (args.experiment == 'p2ibirm'):
+        details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_penibirm_{args.ib_lambda}_ibanneal_{args.ib_penalty_anneal_iters}_bs_{args.batch_size}_partition_details_{split}.json'
+    elif (args.experiment == 'irm') | (args.experiment == 'p1') | (args.experiment == 'p2'):
+        details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_bs_{args.batch_size}_partition_details_{split}.json'
+    elif (args.experiment == 'erm') | (args.experiment == 'p1erm') | (args.experiment == 'p2erm'):
+        details = f'{args.details}_seed_{str(args.seed)}_lr_{args.lr}_bs_{args.batch_size}_partition_details_{split}.json'
+
     results_file = args.results_file+'/'+details
     with open(results_file,'w') as f:
         json.dump(res_df,f)
@@ -263,17 +275,23 @@ def report_every_set_acc(my_dataset, args, split='val'):
     for idx, sample in enumerate(my_dataset.samples):
         image_path, target = sample
         imageID = image_path.split('/')[-1].split('.')[0] # image_path = IMAGE_DATA_FOLDER + imageID + '.jpg'
+        
         assert target_all[idx] == target
         for groups_local in set(imageID_to_group[imageID]):
-            if args.experiment == 'pirm':
-                groups_local = groups_local.split('_')[-2]
-            elif args.experiment == 'irm':
-                groups_local = '_'.join(groups_local.split('_')[1:3])
+            groups_local = groups_local.split('(')[1]
+            # if args.experiment == 'pirm':
+            #     groups_local = groups_local.split('(')[1]
+            # elif args.experiment == 'irm':
+            #     groups_local = groups_local.split('(')[1]
+            # elif args.experiment == 'erm':
+            #     groups_local = groups_local.split('(')[1]
+            # elif args.experiment == 'ibirm':
+            #     groups_local = groups_local.split('(')[1]
             group_to_preds[groups_local]['target'].append(target) 
             group_to_preds[groups_local]['pred_score'].append(pred_score_all[idx])
 
     group_accs = list()
-    print("group keys: ",group_to_preds.keys())
+    # print("group keys: ",group_to_preds.keys())
     for groups_local in sorted(group_to_preds.keys()):
         
         groups_local_target = np.array(group_to_preds[groups_local]['target'])
@@ -282,23 +300,33 @@ def report_every_set_acc(my_dataset, args, split='val'):
         group_accs.append(
             (groups_local, 
             accuracy_score(groups_local_target, groups_local_pred_labels),
-            roc_auc_score(groups_local_target,groups_local_pred_scores) ,
+            # roc_auc_score(groups_local_target,groups_local_pred_scores) ,
             len(groups_local_target))
             # name, acc, group_size 
         )
     res_df = []
     group_accs.sort(key=lambda x: x[1], reverse=True)
     for tup in group_accs:
-        groups_local, acc, group_auc , group_size = tup
-        info_str = "accuracy {:.3f} \t roc_auc_score {:.3f} \t size: {}  \t {} ".format(acc, group_auc, group_size, groups_local)
+        # groups_local, acc, group_auc , group_size = tup
+        groups_local, acc , group_size = tup
+        # info_str = "accuracy {:.3f} \t roc_auc_score {:.3f} \t size: {}  \t {} ".format(acc, group_auc, group_size, groups_local)
+        
+        info_str = "accuracy {:.3f} \t size: {}  \t {} ".format(acc, group_size, groups_local)
+
         info_res = {"groups_local":groups_local,
         "acc":f"{acc:.3f}",
-        "auc":f"{group_auc:.3f}",
+        # "auc":f"{group_auc:.3f}",
         "size":group_size}
         res_df.append(info_res)
-        print(info_str)
+        # print(info_str)
         logging.info(info_str)
-    details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_bs_{args.batch_size}_partition_{split}.json'
+    if (args.experiment == 'ibirm') | (args.experiment == 'p1ibirm') |  (args.experiment == 'p2ibirm'):
+        details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_penibirm_{args.ib_lambda}_ibanneal_{args.ib_penalty_anneal_iters}_bs_{args.batch_size}_partition_{split}.json'
+    elif (args.experiment == 'irm') | (args.experiment == 'p1') | (args.experiment == 'p2'):
+        details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_bs_{args.batch_size}_partition_{split}.json'
+    elif (args.experiment == 'erm') | (args.experiment == 'p1erm') | (args.experiment == 'p2erm'):
+        details = f'{args.details}_seed_{str(args.seed)}_lr_{args.lr}_bs_{args.batch_size}_partition_{split}.json'
+
     results_file = args.results_file+'/'+details
     with open(results_file,'w') as f:
         json.dump(res_df,f)
@@ -380,7 +408,7 @@ def validate(val_loader, model, criterion, args, dumpResult,
     target_all = np.concatenate( target_all, axis=0)
     pred_score_all = np.concatenate( pred_score_all, axis=0)
 
-    print("losses: ",losses)
+    # print("losses: ",losses)
     dump_result_dict = {
                 "target_all": target_all, 
                 "pred_score_all": pred_score_all, 
@@ -398,32 +426,32 @@ def validate(val_loader, model, criterion, args, dumpResult,
     pred_label = (pred_score_all>0.5)
     print("accuracy {:.3f}".format(accuracy_score(target_all, pred_label)),
     '\t',
-    "roc_auc_score {:.3f}".format(roc_auc_score(target_all, pred_score_all)), 
+    # "roc_auc_score {:.3f}".format(roc_auc_score(target_all, pred_score_all)), 
     )
-    print("confusion_matrix\n{}".format(confusion_matrix(target_all, pred_label)))
-    print("classification_report\n{}".format(classification_report(target_all, pred_label)))
+    # print("confusion_matrix\n{}".format(confusion_matrix(target_all, pred_label)))
+    # print("classification_report\n{}".format(classification_report(target_all, pred_label)))
 
     # TODO: this should also be done with the ProgressMeter
     # print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
     #       .format(top1=top1, top5=top5))
-    print('VAL * Acc@1 {top1.avg:.3f}'
-            .format(top1=top1))
+    # print('VAL * Acc@1 {top1.avg:.3f}'
+            # .format(top1=top1))
 
     # if is_main_process():
     logging.info("accuracy {:.3f}".format(accuracy_score(target_all, pred_label)))
-    logging.info(
-        "roc_auc_score {:.3f}".format( roc_auc_score(target_all, pred_score_all) )
-    )
-    logging.info("confusion_matrix\n{}".format(confusion_matrix(target_all, pred_label)))
-    logging.info("classification_report\n{}".format(classification_report(target_all, pred_label)))
-    logging.info('VAL * Acc@1 {top1.avg:.3f}'
-        .format(top1=top1))
+    # logging.info(
+        # "roc_auc_score {:.3f}".format( roc_auc_score(target_all, pred_score_all) )
+    # )
+    # logging.info("confusion_matrix\n{}".format(confusion_matrix(target_all, pred_label)))
+    # logging.info("classification_report\n{}".format(classification_report(target_all, pred_label)))
+    # logging.info('VAL * Acc@1 {top1.avg:.3f}'
+        # .format(top1=top1))
 
 
 
     # TODO: this should also be done with the ProgressMeter
-    print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
-            .format(top1=top1, top5=top5))
+    # print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
+            # .format(top1=top1, top5=top5))
 
     return top1.avg, dump_result_dict
 
@@ -557,6 +585,8 @@ def main_generalization():
     parser.add_argument('--anneal',type=float,default=500)
     parser.add_argument('--domains',type=argparse.FileType('r'),nargs=1)
     parser.add_argument('--experiment',type=str,default='irm')
+    parser.add_argument('--ib_lambda',type=float,default=100)
+    parser.add_argument('--ib_penalty_anneal_iters',type=float,default=100)
     args = parser.parse_args()
     domains = json.load(args.domains[0])
 
@@ -588,7 +618,7 @@ def main_generalization():
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.benchmark = False
 
     ##################################
     # Fancy training dtaset 
@@ -620,6 +650,8 @@ def main_generalization():
     hparams['lr'] = args.lr
     hparams['batch_size'] = args.batch_size
     hparams['irm_penalty_anneal_iters'] = args.anneal
+    hparams['ib_lambda'] = args.ib_lambda
+    hparams['ib_penalty_anneal_iters'] = args.ib_penalty_anneal_iters
 
     print('HParams:')
     for k, v in sorted(hparams.items()):
@@ -667,7 +699,11 @@ def main_generalization():
             y_slice = (target[2 * domain_id * args.batch_size:2 * (domain_id+1) * args.batch_size])
             minibatches_list.append( (x_slice, y_slice) )
         step_vals = algorithm.update(minibatches_list, unlabeled=None)
-        total_loss.append(step_vals['loss'])
+        # print(step_vals)
+        if args.algorithm == 'CDANN':
+            total_loss.append(0)
+        else:
+            total_loss.append(step_vals['loss'])
 
 
         criterion = torch.nn.CrossEntropyLoss() # For compatible 
@@ -688,8 +724,8 @@ def main_generalization():
             subset_influence_batch_results['val_all_grads'].append(dump_result_dict['val_grad_list'])
 
 
-        # acc1, _ = validate(val_out_of_domain_loader, model, criterion, args, dumpResult=True)
-        # val_acc.append(acc1.item())
+        acc1, _ = validate(val_out_of_domain_loader, model, criterion, args, dumpResult=True)
+        val_acc.append(acc1.item())
 
         if batch_id % 20 == 0:
             print('Iteration:', batch_id)
@@ -723,6 +759,7 @@ def main_generalization():
     acc1, _ = validate(test_loader, model, criterion, args, dumpResult=True)
     
     # Report every-group acc, worst-set acc 
+    print("== Test Accurcay ==")
     report_every_set_acc(test_dataset,args, split = 'test')
     print("Avg. test accuracy: ", acc1)
 
