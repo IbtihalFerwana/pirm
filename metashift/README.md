@@ -45,7 +45,6 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
     --data 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' \
     --output_dir train_outputs/experiment_exp1-A \
     --exps irm p1 ibirm p1ibirm erm p1erm
-    
  ```
 
 ## Subpopulationshift Experiment
@@ -68,5 +67,4 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
     --data 'data/subpopulationshift_pirm_ii_exp1_A' \
     --output_dir train_outputs/experiment_exp1-A \
     --exps irm p1 p2 ibirm p1ibirm p2ibirm erm p1erm p2erm
-    
  ```
