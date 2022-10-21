@@ -2,7 +2,7 @@
 Generate MetaDataset with train/test split 
 """
 
-CUSTOM_SPLIT_DATASET_FOLDER = 'data/MetaShift/Domain-Generalization-Cat-Dog-pirmii-exp4-C'
+# CUSTOM_SPLIT_DATASET_FOLDER = 'data/Domain-Generalization-Cat-Dog-pirmii-exp4-C'
 
 import pandas as pd 
 import seaborn as sns
@@ -274,8 +274,8 @@ def copy_images(root_folder,  split, subset_str, img_IDs, use_symlink=True):
 
     return 
 
-def generate_splitted_metadaset():
-
+def generate_splitted_metadaset(args):
+    CUSTOM_SPLIT_DATASET_FOLDER = args.dataset_name
     if os.path.isdir(CUSTOM_SPLIT_DATASET_FOLDER): 
         shutil.rmtree(CUSTOM_SPLIT_DATASET_FOLDER) 
     os.makedirs(CUSTOM_SPLIT_DATASET_FOLDER, exist_ok = False)
@@ -335,7 +335,8 @@ def generate_splitted_metadaset():
     # sub_train_size = 60 #120
     sub_train_size = 100
     val_sub_size = 40
-    add_p = 0.25
+    add_p = args.add_p
+    # add_p = 0.25 #0, 0.10, 0.25
 
     dataset_folder = CUSTOM_SPLIT_DATASET_FOLDER+'/p1'
     test_community_name_to_img_id, test_all_img_id = parse_dataset_scheme(test_set_scheme, node_name_to_img_id,dataset_folder=dataset_folder, exclude_img_id=trainsg_dupes, split='test',trunc_size=test_size)
@@ -357,8 +358,8 @@ def generate_splitted_metadaset():
         }, 
         'dog': {
             # Experiment 1: the dog training data is dog(\emph{cabinet + bed}) communities, and its distance to dog(\emph{shelf}) is $d$=0.44. 
-            # 'dog(P1)': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
-            # 'dog(P2)': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}
+            'dog(P1)': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
+            'dog(P2)': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}
         
             # Experiment 2: 
             # 'dog(P1)': {'dog(bag)', 'dog(backpack)', 'dog(purse)','dog(suitcase)','dog(jacket)'},
@@ -369,8 +370,8 @@ def generate_splitted_metadaset():
             # 'dog(P2)': {'dog(basket)', 'dog(woman)', 'dog(bike)', 'dog(bicycle)','dog(car)','dog(bottle)'},
 
             # Experiment 4: the dog training data is dog(\emph{boat + surfboard}) with distance $d$=1.43.   
-            'dog(P1)': {'dog(frisbee)', 'dog(rope)', 'dog(flag)', 'dog(trees)', 'dog(boat)','dog(dirt)'},
-            'dog(P2)': {'dog(water)', 'dog(surfboard)', 'dog(sand)', 'dog(ball)','dog(cap)','dog(shirt)','dog(glasses)'}
+            # 'dog(P1)': {'dog(frisbee)', 'dog(rope)', 'dog(flag)', 'dog(trees)', 'dog(boat)','dog(dirt)'},
+            # 'dog(P2)': {'dog(water)', 'dog(surfboard)', 'dog(sand)', 'dog(ball)','dog(cap)','dog(shirt)','dog(glasses)'}
         
         }
     }
@@ -656,4 +657,8 @@ def generate_splitted_metadaset():
     return
 
 if __name__ == '__main__':
-    generate_splitted_metadaset()
+    parser = argparse.ArgumentParser(description='Domain Generalization dataset')
+    parser.add_argument('--dataset_name', type=str, default='data/MetaShift/MetaShift-domain-generalization-exp')
+    parser.add_argument('--add_p', type=float, default=0, help='used values are {0, 0.10, 0.25}')
+    args = parser.parse_args()
+    generate_splitted_metadaset(args)
