@@ -1,29 +1,45 @@
-## Description:
-1. `dataset\create_subpopulationshift_dataset.py`: a script for creating a partitioned dataset, outputs 3 subfolders `[p1, p2, irm]`
+## Data
+We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) project, follow the same procedure to download the [Visual Genome](https://github.com/Weixin-Liang/MetaShift#download-visual-genome) data. 
+## Domain Generalization Experiment
+1. Create the dataset using `dataset\domain_generalization_cat_dog_pirm_ii.py`.
+The output directory looks like following
+```
+/genome_vision_data/MetaShift/data/Domain-Generalization-Cat-Dog-pirmii-exp1-A
+
+├── p1
+    ├── imageID_to_group.pkl
+    ├── train/
+        ├── cat/
+        ├── dog/ 
+    ├── test/
+        ├── cat/
+        ├── dog/ 
+    ├── val_out_of_domain/
+        ├── cat/
+        ├── dog/ 
+├── p2
+    ├── imageID_to_group.pkl
+    ├── train/
+    ├── test/
+    ├── val_out_of_domain/
+├── irm
+    ├── imageID_to_group.pkl
+    ├── train/
+    ├── test/
+    ├── val_out_of_domain/
+ ```
+ 
+ 2. Run experiments with grid search on `irm` and `ibirm` penalties and annealing iteration values
+ ```
+ python run_main_experiment.py \
+    --pyfile 'experiments/distribution_shift/main_experiment_metashift.py' \
+    --penalties_irm 10 100 1000 \
+    --penalties_ibirm 10 100 1000 \
+    --anneals_irm 20 40 \
+    --anneals_ibirm 20 40 \
+    --raw_results_folder 'raw_results_dg_cats_dogs' \
+    --data 'data/MetaShift/Domain-Generalization-Cat-Dog-pirmii-exp1-A' \
+    --output_dir train_outputs/experiment_exp1-A \
+    --exps irm p1 ibirm p1ibirm erm p1erm
     
-    Arguments:
-    ```
-    --seed:                   int 
-    --minority_percentage:    int [truncates the minority group to a percentage p of the majority group]
-    --overlap_len:            int [number of duplicated communities in each leaf partition]
-    ```
-2. `main_experiment.py`: a script that runs the vision model
-    Arguments:
-    ```
-    --experiment:       str ['irm' or 'pirm']
-    ```
-  
-3. `run_main.py`: script the runs both scripts, of creating the dataset and applying the experimnets
-  
-    Arguments:
-    ```
-    --algorithm:  str IRM
-    --details:    str [experiment ID/name of one's choice]
-    --pyfile:     str [main_experiment.py]
-    --data:       str [data folder for saving the partitioned dataset]
-    --dataset_script: str [two options: 'dataset/create_domain_generalization_dataset.py' OR 'dataset/create_subpopulationshift_dataset'] with its arguments
-    --anneals_p1:   int [special IRM penalty annealing epoch for pirm first model]
-    --anneals_p2:   int [special IRM penalty annealing epoch for pirm second model]
-    --anneals_irm:  int [special IRM penalty annealing epoch for irm model]
-    --data_exists:  flag [if data folder exists]
-  ```
+ ```
