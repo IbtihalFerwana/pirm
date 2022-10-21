@@ -1,10 +1,14 @@
 ## Data
 We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) project, follow the same procedure to download the [Visual Genome](https://github.com/Weixin-Liang/MetaShift#download-visual-genome) data. 
 ## Domain Generalization Experiment
-1. Create the dataset using `dataset\domain_generalization_cat_dog_pirm_ii.py`.
-The output directory looks like following
+1. Create the dataset using `dataset\domain_generalization_cat_dog_pirm_ii.py`
+ 
+#### Example: 
+- creating dataset with no overlap between environments `!python dataset/domain_generalization_cat_dog_pirm_ii.py --dataset_name '/data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' --add_p 0`
+
+- The output directory looks like following
 ```
-/genome_vision_data/MetaShift/data/Domain-Generalization-Cat-Dog-pirmii-exp1-A
+/data/Domain-Generalization-Cat-Dog-pirmii-exp1-A
 
 ├── p1
     ├── imageID_to_group.pkl
