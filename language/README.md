@@ -2,7 +2,7 @@ The script can run both NLP tasks: `scierc` and `aic`
 
 ## SciERC
 ### Data
-We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/), and preprocessed using `data_reader.py`. The data directory is `sciERC_temporal`. 
+We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/), and preprocessed it using `data_reader.py`. The data directory is `sciERC_temporal`. 
 
 ### Example 
 ```
