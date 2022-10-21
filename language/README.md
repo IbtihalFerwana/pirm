@@ -2,11 +2,11 @@ The script can run both NLP tasks: `scierc` and `aic`
 
 # SciERC
 ### Data
-We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/), and preprocessed using `data_reader.py`. The data directory is `sciERC_temporal`, have it inside the `pirm` directory. 
+We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/), and preprocessed using `data_reader.py`. The data directory is `sciERC_temporal`. 
 
 ### Example 
 ```
-!python pirm/conditional_train_model_script_final_v1.py 
+!python conditional_train_model_script_final_v1.py 
 --batch_size 8 \
 --penalty_anneal_iters 30 \
 --training_years 2000 \
@@ -28,7 +28,7 @@ We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/), and preprocesse
 We used preprocessed data from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic)
 ### Example
 ```
-!python pirm/conditional_train_model_script_final_v1.py \
+!python conditional_train_model_script_final_v1.py \
 --training_years 2006 2009 2012 2015 \
 --method "irm" \
 --testing_years 2018 \
