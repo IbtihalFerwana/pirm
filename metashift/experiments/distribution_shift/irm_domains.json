@@ -1,0 +1,10 @@
+{
+    "0": {
+        "cat":["cat_indoor_p0","cat_indoor_p1"],
+        "dog":["dog_indoor_p0","dog_indoor_p1"]
+    },
+    "1": {
+        "cat":["cat_outdoor_p0","cat_outdoor_p1"],
+        "dog":["dog_outdoor_p0","dog_outdoor_p1"]
+    }
+}
