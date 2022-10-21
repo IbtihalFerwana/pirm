@@ -1,6 +1,6 @@
 The script can run both NLP tasks: `scierc` and `aic`
 
-# SciERC
+## SciERC
 ### Data
 We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/), and preprocessed using `data_reader.py`. The data directory is `sciERC_temporal`. 
 
@@ -23,7 +23,7 @@ We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/), and preprocesse
 --save_best_model True \
 --task 'scierc'
 ```
-# AIC
+## AIC
 ### Data
 We used preprocessed data from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic)
 ### Example
