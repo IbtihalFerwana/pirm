@@ -46,6 +46,8 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
     --output_dir train_outputs/experiment_exp1-A \
     --exps irm p1 ibirm p1ibirm erm p1erm
  ```
+3. Extract results using `reading_dg_results.py`
+
 
 ## Subpopulationshift Experiment
 1. Create the dataset using `dataset\create_subpopulation_pirm_ii.py`
@@ -68,3 +70,4 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
     --output_dir train_outputs/experiment_exp1-A \
     --exps irm p1 p2 ibirm p1ibirm p2ibirm erm p1erm p2erm
  ```
+3. Extract results using `reading_subpopulationshifts_results.py`
