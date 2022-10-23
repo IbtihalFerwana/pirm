@@ -59,7 +59,7 @@ The set of samples in `p1` is the one closer to the test data
 - creating dataset with no overlap and minority group percentage is 12% `python dataset/create_subpopulation_pirm_ii.py --data_folder 'data/subpopulationshift_pirm_ii_exp1_A' --mp 0.12 --add_p 0`
 
 - The output directory looks like following
-
+```
 ├── p1
     ├── imageID_to_group.pkl
     ├── train/
@@ -93,7 +93,7 @@ The set of samples in `p1` is the one closer to the test data
     ├── val_out_of_domain/
         ├── cat/
         ├── dog/ 
-
+```
 2. Run experiments with grid search on `irm` and `ibirm` penalties and annealing iteration values
  ```
  python run_main_experiment.py \
