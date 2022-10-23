@@ -21,18 +21,21 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
     ├── val_out_of_domain/
         ├── cat/
         ├── dog/ 
-├── p2
-    ├── imageID_to_group.pkl
-    ├── train/
-    ├── test/
-    ├── val_out_of_domain/
 ├── irm
     ├── imageID_to_group.pkl
     ├── train/
+        ├── cat/
+        ├── dog/ 
     ├── test/
+        ├── cat/
+        ├── dog/ 
     ├── val_out_of_domain/
+        ├── cat/
+        ├── dog/ 
  ```
- 
+The set of samples in `p1` is the one closer to the test data
+
+
 2. Run experiments with grid search on `irm` and `ibirm` penalties and annealing iteration values
  ```
  python run_main_experiment.py \
@@ -55,7 +58,41 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
 #### Example: 
 - creating dataset with no overlap and minority group percentage is 12% `python dataset/create_subpopulation_pirm_ii.py --data_folder 'data/subpopulationshift_pirm_ii_exp1_A' --mp 0.12 --add_p 0`
 
-- The output directory looks like above
+- The output directory looks like following
+
+├── p1
+    ├── imageID_to_group.pkl
+    ├── train/
+        ├── cat/
+        ├── dog/ 
+    ├── test/
+        ├── cat/
+        ├── dog/ 
+    ├── val_out_of_domain/
+        ├── cat/
+        ├── dog/ 
+├── p2
+    ├── imageID_to_group.pkl
+    ├── train/
+        ├── cat/
+        ├── dog/ 
+    ├── test/
+        ├── cat/
+        ├── dog/ 
+    ├── val_out_of_domain/
+        ├── cat/
+        ├── dog/ 
+├── irm
+    ├── imageID_to_group.pkl
+    ├── train/
+        ├── cat/
+        ├── dog/ 
+    ├── test/
+        ├── cat/
+        ├── dog/ 
+    ├── val_out_of_domain/
+        ├── cat/
+        ├── dog/ 
 
 2. Run experiments with grid search on `irm` and `ibirm` penalties and annealing iteration values
  ```
