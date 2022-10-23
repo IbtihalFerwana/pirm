@@ -6,7 +6,7 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
 #### Example: 
 - creating dataset with no overlap between environments `python dataset/domain_generalization_cat_dog_pirm_ii.py --dataset_name '/data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' --add_p 0`
 
-- The output directory looks like following
+- The output directory looks like following. The set of samples in `p1` is the one closer to the test data in terms of distance. 
 ```
 /data/Domain-Generalization-Cat-Dog-pirmii-exp1-A
 
@@ -33,7 +33,6 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
         ├── cat/
         ├── dog/ 
  ```
-The set of samples in `p1` is the one closer to the test data
 
 
 2. Run experiments with grid search on `irm` and `ibirm` penalties and annealing iteration values
@@ -58,7 +57,7 @@ The set of samples in `p1` is the one closer to the test data
 #### Example: 
 - creating dataset with no overlap and minority group percentage is 12% `python dataset/create_subpopulation_pirm_ii.py --data_folder 'data/subpopulationshift_pirm_ii_exp1_A' --mp 0.12 --add_p 0`
 
-- The output directory looks like following
+- The output directory looks like following. Here `p1` and `p2` include samples from `indoor` and `outdoor` respectively. 
 ```
 ├── p1
     ├── imageID_to_group.pkl
