@@ -71,3 +71,10 @@ python conditional_train_model_script_final_v1.py \
 `2010` --> `[2010 - 2014]`
 
 `2015` --> `[2015 - 2016]`
+
+## Specifications
+|                  | SciERC Experiment | AIC Experiment |
+|------------------|-------------------|----------------|
+| Number of GPUs   | 4                 | 4              |
+| Batch Size       | 8                 | 8              |
+| Number of Epochs | 80                | 40             |
