@@ -6,12 +6,12 @@ We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/). First we prepro
 
 ### Example 
 ```
-!python data_reader.py --raw_data 'raw_data' --output_dir 'sciERC_temporal/equal_split' --period_size 10
+python data_reader.py --raw_data 'raw_data' --output_dir 'sciERC_temporal/equal_split' --period_size 10
 ```
 
 
 ```
-!python conditional_train_model_script_final_v1.py 
+python conditional_train_model_script_final_v1.py 
 --batch_size 8 \
 --penalty_anneal_iters 30 \
 --training_years 2000 \
@@ -30,15 +30,15 @@ We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/). First we prepro
 ```
 ## AIC
 ### Data
-We used preprocessed data from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic). First we organized that data to match our scheme using `aic_data_reader.py`
+We used preprocessed data from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic), please follow the [lfs](https://git-lfs.github.com/) instructions to download AIC data from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic). We organized that data to match our scheme using `aic_data_reader.py`
 
 ### Example
 ```
-!python aic_data_reader.py --raw_data 'data' --output_dir 'data/preprocessed'
+python aic_data_reader.py --raw_data 'data' --output_dir 'data/preprocessed'
 ```
 
 ```
-!python conditional_train_model_script_final_v1.py \
+python conditional_train_model_script_final_v1.py \
 --training_years 2006 2009 2012 2015 \
 --method "irm" \
 --testing_years 2018 \
