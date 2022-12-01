@@ -2,7 +2,7 @@ The script can run both NLP tasks: `scierc` and `aic`
 
 ## SciERC
 ### Data
-We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/), after downloading it, we preprocess it using `data_reader.py`. 
+Download raw_data from [SciERC](http://nlp.cs.washington.edu/sciIE/), then preprocess it using `data_reader.py`. 
 
 Run the following commands to get our data splits of four environments, [1980-1989], [1990-1999], [2000-2004], [2005-2009]
 ```
@@ -58,7 +58,7 @@ python conditional_train_model_script_final_v1.py
 
 ## AIC
 ### Data
-We used preprocessed data from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic), please follow the [lfs](https://git-lfs.github.com/) instructions to download AIC data from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic). We organized that data to match our scheme using `aic_data_reader.py`
+Download [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic) and follow the [lfs](https://git-lfs.github.com/) instructions to download AIC data. Then run `aic_data_reader.py` to organize the data to match our scheme 
 
 ### Example
 ```
