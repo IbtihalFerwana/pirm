@@ -4,7 +4,7 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
 1. Create the dataset using `dataset\domain_generalization_cat_dog_pirm_ii.py`
  
 #### Example: 
-- creating dataset with no overlap between environments `python dataset/domain_generalization_cat_dog_pirm_ii.py --dataset_name '/data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' --add_p 0`
+- creating dataset with no overlap between environments `python dataset/domain_generalization_cat_dog_pirm_ii.py --dataset_name 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' --add_p 0`
 
 - The output directory looks like following. The set of samples in `p1` is the one closer to the test data in terms of distance. 
 ```
