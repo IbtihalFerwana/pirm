@@ -4,18 +4,18 @@ import os
 import numpy as np
 
 
-def get_years_list(min_year,max_year, period_size):
-    if min_year < 1980:
+def get_years_strings(yr_list):
+    if yr_list[0] < 1980:
         raise ValueError("min_year must be greater than or equal 1980")
-    if max_year > 2016+1:
+    if yr_list[-1] > 2016:
         raise ValueError("max_year must be less than or equal 2016")
     
-    yrs_lst = list(np.arange(min_year, max_year, period_size))
-    yrs_lst.append(max_year)
+    #yrs_lst = list(np.arange(min_year, max_year, period_size))
+    #yrs_lst.append(max_year)
     
-    yrs_string = [str(yr)+"-"+str(yrs_lst[i+1]-1) for i, yr in enumerate(yrs_lst[:-1])]
+    yrs_string = [str(yr)+"-"+str(yr_list[i+1]-1) for i, yr in enumerate(yr_list[:-1])]
     
-    return yrs_lst, yrs_string
+    return yrs_string
 
 def create_files_splits(yrs_lst, yrs_string, outdir):
 
@@ -26,7 +26,7 @@ def create_files_splits(yrs_lst, yrs_string, outdir):
         os.mkdir(outdir)
 
 
-    for split in ['train','test', 'dev']:
+    for split in ['train','test', 'val']:
         if not os.path.isdir(f'{outdir}/{split}'):
             os.mkdir(f'{outdir}/{split}')
 
@@ -99,31 +99,50 @@ def split_data(raw_data, yrs_lst, outfiles):
                             row = json.dumps(row)
 
                             for i, yr in enumerate(yrs_lst[:-1]):
-                                if (year <= yrs_lst[i+1]) and (year >= yr):
+                                if (year < yrs_lst[i+1]) and (year >= yr):
                                     all_data[yr].append(row)
                                     continue
 
-#         print(per_year_stats)
+    #return per_year_stats
     print('-- Data Stats --')
     for year, rows in all_data.items():
         
-        if len(rows) > 800:
-            train_size = 600
-        else:
-            train_size = 400
+        #if len(rows) > 800:
+        #    train_size = 600
+        #else:
+        #    train_size = 400
         
-        train = rows[:train_size]
-        split_sizes = int((len(rows) - train_size)/2)
-        test = rows[train_size:train_size + split_sizes]
-        dev = rows[train_size + split_sizes:train_size + 2*split_sizes]
+        train_env_len = len(rows)
+        a = np.arange(train_env_len)
+        np.random.shuffle(a)
+
+        train_split = 0.75
+        test_split = 0.15
+        val_split = 0.1
+
+        train_indices = a[:int(train_env_len * train_split)]
+        test_indices = a[int(train_env_len * train_split):int(train_env_len * (train_split+test_split))]
+        val_indices = a[int(train_env_len * (train_split+test_split)):]
+
+
+        print(train_env_len)
+
+        #train = rows[:train_size]
+        #split_sizes = int((len(rows) - train_size)/2)
+        #test = rows[train_size:train_size + split_sizes]
+        #dev = rows[train_size + split_sizes:train_size + 2*split_sizes]
+        train = [rows[i] for i in train_indices]
+        test = [rows[i] for i in test_indices]
+        val = [rows[i] for i in val_indices]
         
-        print(f'\t year: {year} | train_size: {len(train)} | test_size: {len(test)} | dev_size: {len(dev)}')
+        print(f'\t year: {year} | train_size: {len(train)} | test_size: {len(test)} | dev_size: {len(val)}')
         
         outfiles['train' + str(year)].write('\n'.join(train))
         outfiles['test' + str(year)].write('\n'.join(test))
-        outfiles['dev' + str(year)].write('\n'.join(dev))
+        outfiles['val' + str(year)].write('\n'.join(val))
     
     print('files written')
+    return per_year_stats
     
     
     
@@ -131,18 +150,31 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='time alignment -- read and split data')
     parser.add_argument('--raw_data', type=str, default='raw_data', help='raw data directory')
-    parser.add_argument('--min_year', type=int, default=1980, help='minimum year in period range - included')                     
-    parser.add_argument('--max_year', type=int, default=2017, help='maximum year in period range - excluded')
-    parser.add_argument('--period_size', type=int, default=10, help='splitting years interval into equal sizes, left overs will have smaller size')
+    # parser.add_argument('--min_year', type=int, default=1980, help='minimum year in period range - included')                     
+    # parser.add_argument('--max_year', type=int, default=2017, help='maximum year in period range - excluded')
+    # parser.add_argument('--period_size', type=int, default=10, help='splitting years interval into equal sizes, left overs will have smaller size')
     parser.add_argument('--output_dir', type=str, default='sciERC_temporal', help='output directory') 
     args = parser.parse_args()
-    min_year = args.min_year
-    max_year = args.max_year
-    period_size = args.period_size
+    # min_year = args.min_year
+    # max_year = args.max_year
+    # period_size = args.period_size
     output_dir = args.output_dir
     raw_data = args.raw_data                                   
     
     
-    yrs_lst, yrs_string = get_years_list(min_year, max_year, period_size)
-    outfiles = create_files_splits(yrs_lst, yrs_string,output_dir)
-    split_data(raw_data, yrs_lst, outfiles)
+    # yrs_lst, yrs_string = get_years_list(min_year, max_year, period_size)
+    # outfiles = create_files_splits(yrs_lst, yrs_string,output_dir)
+    # split_data(raw_data, yrs_lst, outfiles)
+
+    #new_years_list = [1980, 1990, 2000, 2005, 2010, 2016]
+
+    ### equal splits
+    #new_years_list = [1980, 1992, 2000, 2003, 2005, 2006, 2008, 2013, 2016]
+    new_years_list = [1980, 1990, 2000, 2005, 2010, 2016]
+
+    yrs_string = get_years_strings(new_years_list)
+    print(yrs_string)
+
+    outfiles = create_files_splits(new_years_list, yrs_string, output_dir)
+    per_year_stats = split_data(raw_data, new_years_list, outfiles)
+    #split_data(raw_data, yrs_lst, outfiles)
