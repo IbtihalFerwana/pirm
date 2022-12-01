@@ -4,7 +4,7 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
 1. Create the dataset using `dataset\domain_generalization_cat_dog_pirm_ii.py`
  
 #### Example: 
-- creating dataset with no overlap between environments `python dataset/domain_generalization_cat_dog_pirm_ii.py --dataset_name '/data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' --add_p 0`
+- creating dataset with no overlap between environments `python dataset/domain_generalization_cat_dog_pirm_ii.py --dataset_name 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' --add_p 0`
 
 - The output directory looks like following. The set of samples in `p1` is the one closer to the test data in terms of distance. 
 ```
@@ -46,6 +46,7 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
     --raw_results_folder 'raw_results_dg_cats_dogs' \
     --data 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' \
     --output_dir train_outputs/experiment_exp1-A \
+    --details experiment_exp1-A \
     --exps irm p1 ibirm p1ibirm erm p1erm
  ```
 3. Extract results using `reading_dg_results.py`
@@ -104,6 +105,7 @@ We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) pro
     --raw_results_folder 'raw_results_sps_cats_dogs' \
     --data 'data/subpopulationshift_pirm_ii_exp1_A' \
     --output_dir train_outputs/experiment_exp1-A \
+    --details experiment_exp1-A \
     --exps irm p1 p2 ibirm p1ibirm p2ibirm erm p1erm p2erm
  ```
 3. Extract results using `reading_subpopulationshifts_results.py`
