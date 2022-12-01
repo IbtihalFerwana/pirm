@@ -2,32 +2,60 @@ The script can run both NLP tasks: `scierc` and `aic`
 
 ## SciERC
 ### Data
-We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/). First we preprocessed it using `data_reader.py`. 
+We used data from [SciERC](http://nlp.cs.washington.edu/sciIE/), after downloading it, we preprocess it using `data_reader.py`. 
 
-### Example 
+Run the following commands to get our data splits of four environments, [1980-1989], [1990-1999], [2000-2004], [2005-2009]
 ```
-python data_reader.py --raw_data 'raw_data' --output_dir 'sciERC_temporal/equal_split' --period_size 10
+python data_reader --min_year 1980 --max_year 2001 --period_size 10
+```
+```
+python data_reader --min_year 2000 --max_year 2010 --period_size 5
 ```
 
+##### Example: to run P-IRM (partitioned) on 3 envs
 
 ```
 python conditional_train_model_script_final_v1.py 
 --batch_size 8 \
---penalty_anneal_iters 30 \
---training_years 2000 \
+--penalty_weight 1000 \
+--penalty_anneal_iters 40 \
+--training_years 1990 2000 2005 \
 --method "irm" \
---testing_years 2008 2013 \
---train_conditioning 2000 \
+--testing_years 2010 \
+--train_conditioning 1990 2000 2005 \
 --data_dir 'sciERC_temporal' \
---data_split 'equal_split' \
+--data_split 'simple_split' \
 --model 'bert' \
---epochs 1 \
---model_path 'conditional_equal_split_00_06' \
+--epochs 80 \
+--model_path 'scierc_models_epochs80_bs8' \
 --seed 0 \
 --save_training_history True \
 --save_best_model True \
 --task 'scierc'
 ```
+
+##### Example: to run P-IRM (conditioned) on 3 envs
+
+```
+python conditional_train_model_script_final_v1.py 
+--batch_size 8 \
+--penalty_weight 100 \
+--penalty_anneal_iters 30 \
+--training_years 1980 1990 2000 2005 \
+--method "irm" \
+--testing_years 2010 \
+--train_conditioning 1990 2000 2005 \
+--data_dir 'sciERC_temporal' \
+--data_split 'simple_split' \
+--model 'bert' \
+--epochs 80 \
+--model_path 'scierc_models_epochs80_bs8' \
+--seed 0 \
+--save_training_history True \
+--save_best_model True \
+--task 'scierc'
+```
+
 ## AIC
 ### Data
 We used preprocessed data from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic), please follow the [lfs](https://git-lfs.github.com/) instructions to download AIC data from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic). We organized that data to match our scheme using `aic_data_reader.py`
