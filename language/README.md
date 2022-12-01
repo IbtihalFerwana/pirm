@@ -27,7 +27,7 @@ python conditional_train_model_script_final_v1.py
 --data_split 'simple_split' \
 --model 'bert' \
 --epochs 80 \
---model_path 'scierc_models_epochs80_bs8' \
+--model_path 'partitioned_models_epochs80_bs8' \
 --seed 0 \
 --save_training_history True \
 --save_best_model True \
@@ -49,7 +49,7 @@ python conditional_train_model_script_final_v1.py
 --data_split 'simple_split' \
 --model 'bert' \
 --epochs 80 \
---model_path 'scierc_models_epochs80_bs8' \
+--model_path 'conditioned_models_epochs80_bs8' \
 --seed 0 \
 --save_training_history True \
 --save_best_model True \
