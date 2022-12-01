@@ -2,7 +2,7 @@ The script can run both NLP tasks: `scierc` and `aic`
 
 ## SciERC
 ### Data
-Download raw_data from [SciERC](http://nlp.cs.washington.edu/sciIE/), then preprocess it using `data_reader.py`. 
+Download `raw_data` from [SciERC](http://nlp.cs.washington.edu/sciIE/), then preprocess it using `data_reader.py`. 
 
 Run the following commands to get our data splits of four environments, [1980-1989], [1990-1999], [2000-2004], [2005-2009]
 ```

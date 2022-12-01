@@ -1,5 +1,6 @@
 ## Data
-We used data from the [MetaShift](https://github.com/Weixin-Liang/MetaShift) project, follow the same procedure to download the [Visual Genome](https://github.com/Weixin-Liang/MetaShift#download-visual-genome) data. 
+We use the [MetaShift](https://github.com/Weixin-Liang/MetaShift) dataset environments, follow the same procedure to download the [Visual Genome](https://github.com/Weixin-Liang/MetaShift#download-visual-genome) data. Have the downloaded files be in a directory named `genome_vision_data` and let it be in the same directory where `pirm` directory resides. 
+
 ## Domain Generalization Experiment
 1. Create the dataset using `dataset\domain_generalization_cat_dog_pirm_ii.py`
  
