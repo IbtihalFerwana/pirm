@@ -3,9 +3,10 @@ We use the [MetaShift](https://github.com/Weixin-Liang/MetaShift) dataset enviro
 
 ## Domain Generalization Experiment
 1. Create the dataset using `dataset\domain_generalization_cat_dog_pirm_ii.py`
+2. The data for each experiment in Table 2 (in the main text) can be regenerated using the experiment index (1 to 4)
  
 #### Example: 
-- creating dataset with no overlap between environments `python dataset/domain_generalization_cat_dog_pirm_ii.py --dataset_name 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' --add_p 0`
+- creating dataset with no overlap between environments `python dataset/domain_generalization_cat_dog_pirm_ii.py --dataset_name 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' --add_p 0 --experiment_index 1`
 
 - The output directory looks like following. The set of samples in `p1` is the one closer to the test data in terms of distance. 
 ```
