@@ -8,7 +8,7 @@ We use the [MetaShift](https://github.com/Weixin-Liang/MetaShift) dataset enviro
 Arguments
 --dataset_name: the output directory for the generated data 
 --add_p: the percentage of overlap between the two domains, options = {0,0.10,0.25}
---experiment_index: the experiment number referencing the main text (table 2). 
+--experiment_index: the experiment number referencing the main text (table 2), options = {1,2,3,4} 
 ```
  
 #### Example: 
