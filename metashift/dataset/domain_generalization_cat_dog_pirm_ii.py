@@ -52,7 +52,7 @@ def print_communities(subject_data, node_name_to_img_id, trainsg_dupes, subject_
             node_str = node_str.replace('\n', '')
             node_image_IDs = node_name_to_img_id[node_str]
             community_merged.update(node_image_IDs)
-            # print(node_str , len(node_image_IDs), end=';')
+            
 
         print('total size:',len(community_merged))
         community_set = set([ x.replace('\n', '') for x in community])
@@ -83,19 +83,11 @@ def parse_dataset_scheme(dataset_scheme, node_name_to_img_id,dataset_folder=None
             # Iterate node_name: e.g., 'cat(cup)', 'cat(sofa)', 'cat(chair)'
             ##################################
             for node_name in dataset_scheme[subject_str][community_name]:
-                # print("node name: ", node_name)
-                # print("exlude image length: ", len(exclude_img_id_local))
                 community_name_to_img_id[community_name].update(node_name_to_img_id[node_name] - exclude_img_id_local)
-                # if split == 'train':
-                # exclude_img_id_local.update(all_img_id)
-                # print("All images length: ", len(all_img_id))
             community_name_to_img_id[community_name] = set(shuffle_and_truncate(community_name_to_img_id[community_name], trunc_size))
-            # community_name_to_img_id[community_name] = set(sorted(community_name_to_img_id[community_name])[:trunc_size])
-            # community_name_to_img_id[community_name] = set(sorted(community_name_to_img_id[community_name]))
             exclude_img_id_local.update(community_name_to_img_id[community_name])
             all_img_id.update(community_name_to_img_id[community_name])
-            # if copy:
-            # print(community_name, 'Size:', len(community_name_to_img_id[community_name]) )
+            
             
 
 
@@ -299,8 +291,12 @@ def generate_splitted_metadaset(args):
         G = print_communities(subject_data, node_name_to_img_id, trainsg_dupes, subject_str) # print detected communities, which guides us the train/test split. 
         subject_str_to_Graphs[subject_str] = G
 
+    test_size = 100 
+    sub_train_size = 100
+    val_sub_size = 40
+    add_p = args.add_p
 
-    
+    print('========== test set info ==========')
     test_set_scheme = {
         'cat': {
             'cat(shelf)': {'cat(container)', 'cat(shelf)', 'cat(vase)', 'cat(bowl)'},
@@ -327,15 +323,6 @@ def generate_splitted_metadaset(args):
         },
     }
 
-
-
-    print('========== test set info ==========')
-
-    test_size = 100 
-    sub_train_size = 100
-    val_sub_size = 40
-    add_p = args.add_p
-
     dataset_folder = CUSTOM_SPLIT_DATASET_FOLDER+'/p1'
     test_community_name_to_img_id, test_all_img_id = parse_dataset_scheme(test_set_scheme, node_name_to_img_id,dataset_folder=dataset_folder, exclude_img_id=trainsg_dupes, split='test',trunc_size=test_size)
     
@@ -347,109 +334,99 @@ def generate_splitted_metadaset(args):
 
     
     print("============ Metashift IRM ================")
+    # The used domains before partitioning are the result of Metashift domains #
+    # The cat training data is always cat(room) 
+    # The dog training data changes at each experiment to have various distances to the dog testing data
+    # The dot testing data is always dog(shelf), similariy the cat testing data is always cat(shelf)
+
     if experiment_index == 1:
+        # Experiment 1: dog training set distance to dog(\emph{shelf}) is d=0.17.
         train_set_scheme = {
         'cat': {
-        # The cat training data is always cat(\emph{sofa + bed}) 
-        'cat(P1)': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
-        'cat(P2)':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
-        }, 
+            'cat(P1)': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
+            'cat(P2)':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
+            }, 
         'dog': {
-        # Experiment 1: the dog training data is dog(\emph{cabinet + bed}) communities, and its distance to dog(\emph{shelf}) is $d$=0.17. 
-        'dog(P1)': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
-        'dog(P2)': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}       
-        }
+            'dog(P1)': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
+            'dog(P2)': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}       
+            }
         }
         val_set_scheme = {
         'cat': {
-        # The cat training data is always cat(\emph{sofa + bed}) 
-        'cat(P1)_val': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
-        'cat(P2)_val':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
-        }, 
+            'cat(P1)_val': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
+            'cat(P2)_val':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
+            }, 
         'dog': {
-        # Experiment 1: Validation  
-        'dog(P1)_val': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
-        'dog(P2)_val': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}
-        }
+            'dog(P1)_val': {'dog(floor)', 'dog(clothes)', 'dog(towel)', 'dog(door)', 'dog(rug)', 'dog(cabinet)'}, 
+            'dog(P2)_val': {'dog(blanket)', 'dog(bed)', 'dog(sheet)', 'dog(remote control)', 'dog(pillow)', 'dog(lamp)', 'dog(couch)', 'dog(books)', 'dog(curtain)'}
+            }
         }
     elif experiment_index == 2:
-
+        # Experiment 2: dog training set distance to dog(\emph{shelf}) is d = 0.54
         train_set_scheme = {
         'cat': {
-            # The cat training data is always cat(\emph{sofa + bed}) 
             'cat(P1)': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
             'cat(P2)':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
         }, 
         'dog': {        
-            # Experiment 2: d = 0.54
+            
             'dog(P1)': {'dog(bag)', 'dog(backpack)', 'dog(purse)','dog(suitcase)','dog(jacket)'},
             'dog(P2)': {'dog(box)', 'dog(container)', 'dog(food)', 'dog(table)', 'dog(plate)', 'dog(cup)','dog(basket)','dog(pole)'}         
         }
     }
         val_set_scheme = {
         'cat': {
-            # The cat training data is always cat(\emph{sofa + bed}) 
             'cat(P1)_val': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
             'cat(P2)_val':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
         }, 
         'dog': {
-            # Experiment 2: 
             'dog(P1)_val':  {'dog(bag)', 'dog(backpack)', 'dog(purse)','dog(suitcase)','dog(jacket)'},
             'dog(P2)_val': {'dog(box)', 'dog(container)', 'dog(food)', 'dog(table)', 'dog(plate)', 'dog(cup)','dog(basket)','dog(pole)'}         }
     }
     elif experiment_index == 3:
+        # Experiment 3: dog training set distance to dog(\emph{shelf}) is d=0.81   
         train_set_scheme = {
         'cat': {
-        # The cat training data is always cat(\emph{sofa + bed}) 
-        'cat(P1)': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
-        'cat(P2)':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
+            'cat(P1)': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
+            'cat(P2)':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
         }, 
         'dog': {
-
-        # Experiment 3: d=0.81   
-        'dog(P1)': {'dog(frisbee)', 'dog(rope)', 'dog(flag)', 'dog(trees)', 'dog(boat)','dog(dirt)'},
-        'dog(P2)': {'dog(water)', 'dog(surfboard)', 'dog(sand)', 'dog(ball)','dog(cap)','dog(shirt)','dog(glasses)'}
-
-        }
+            'dog(P1)': {'dog(frisbee)', 'dog(rope)', 'dog(flag)', 'dog(trees)', 'dog(boat)','dog(dirt)'},
+            'dog(P2)': {'dog(water)', 'dog(surfboard)', 'dog(sand)', 'dog(ball)','dog(cap)','dog(shirt)','dog(glasses)'}
+            }
         }
         val_set_scheme = {
         'cat': {
-            # The cat training data is always cat(\emph{sofa + bed}) 
             'cat(P1)_val': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
             'cat(P2)_val':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
             }, 
         'dog': {
-            # Experiment 3: 
             'dog(P1)_val': {'dog(frisbee)', 'dog(rope)', 'dog(flag)', 'dog(trees)', 'dog(boat)','dog(dirt)'},
             'dog(P2)_val': {'dog(water)', 'dog(surfboard)', 'dog(sand)', 'dog(ball)','dog(cap)','dog(shirt)','dog(glasses)'}
-        }}
+        }
+        }
      
     elif experiment_index == 4:
+        # Experiment 4: dog training set distance to dog(\emph{shelf}) is d = 0.92
         train_set_scheme = {
         'cat': {
-        # The cat training data is always cat(\emph{sofa + bed}) 
-        'cat(P1)': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
-        'cat(P2)':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
+            'cat(P1)': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
+            'cat(P2)':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
         }, 
         'dog': {
-        # Experiment 3: the dog training data is dog(\emph{bench + bike}) with distance $d$=0.92
-        'dog(P1)': {'dog(bench)', 'dog(trash can)','dog(fence)','dog(trees)','dog(frisbee)','dog(truck)'} ,
-        'dog(P2)': {'dog(basket)', 'dog(woman)', 'dog(bike)', 'dog(bicycle)','dog(car)','dog(bottle)'},        
+            'dog(P1)': {'dog(bench)', 'dog(trash can)','dog(fence)','dog(trees)','dog(frisbee)','dog(truck)'} ,
+            'dog(P2)': {'dog(basket)', 'dog(woman)', 'dog(bike)', 'dog(bicycle)','dog(car)','dog(bottle)'},        
         }
         }
         val_set_scheme = {
-        # Note: these comes from copy-pasting the community detection results of cat & dog. 
-        'cat': {
-        # The cat training data is always cat(\emph{sofa + bed}) 
-        'cat(P1)_val': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
-        'cat(P2)_val':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
+        'cat': { 
+            'cat(P1)_val': {'cat(cup)', 'cat(sofa)', 'cat(chair)'},
+            'cat(P2)_val':  {'cat(bed)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)', 'cat(remote control)', 'cat(pillow)', 'cat(couch)'},
         }, 
         'dog': {
-        # Experiment 3: the dog training data is dog(\emph{bench + bike}) with distance $d$=1.12
-        'dog(P1)_val': {'dog(bench)', 'dog(trash can)','dog(fence)','dog(trees)','dog(frisbee)','dog(truck)'} ,
-        'dog(P2)_val': {'dog(basket)', 'dog(woman)', 'dog(bike)', 'dog(bicycle)','dog(car)','dog(bottle)'}
-
-        }
+            'dog(P1)_val': {'dog(bench)', 'dog(trash can)','dog(fence)','dog(trees)','dog(frisbee)','dog(truck)'} ,
+            'dog(P2)_val': {'dog(basket)', 'dog(woman)', 'dog(bike)', 'dog(bicycle)','dog(car)','dog(bottle)'}
+            }
         }
     else:
         raise Exception('Not implemented')
@@ -482,19 +459,18 @@ def generate_splitted_metadaset(args):
 
     print('========== Quantifying the distance between train and test subsets ==========')
     test_community_name_to_img_id_all, _ = parse_dataset_scheme(test_set_scheme, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='test', copy=False)
-    # train_community_name_to_img_id, _ = parse_dataset_scheme(train_set_scheme_all, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='train', copy=False)
     additional_test_community_name_to_img_id, _ = parse_dataset_scheme(additional_test_set_scheme, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='test', copy=False)
     
-    # exit(0)
+    
     community_name_to_img_id = test_community_name_to_img_id_all.copy()
     community_name_to_img_id.update(train_community_name_to_img_id)
-    # community_name_to_img_id.update(val_community_name_to_img_id)
+    
     print("community_name_to_img_id.keys()", community_name_to_img_id.keys())
     community_name_to_img_id.update(additional_test_community_name_to_img_id)
     dog_community_name_list = sorted(train_set_scheme['dog']['dog(P1)']) +sorted(train_set_scheme['dog']['dog(P2)'])+ sorted(test_set_scheme['dog']) + sorted(additional_test_set_scheme['dog']) 
     dog_community_name_list = sorted(train_set_scheme['dog'])+ sorted(test_set_scheme['dog']) + sorted(additional_test_set_scheme['dog']) 
     N_sets = len(community_name_to_img_id.keys())
-    # N_sets = len(dog_community_name_list)
+    
     Adjacency_matrix = np.ones((N_sets, N_sets))
     for i, ii in enumerate(community_name_to_img_id.keys()):
         
@@ -509,11 +485,9 @@ def generate_splitted_metadaset(args):
                 edge_weight = len(overlap_set) / min( len(set_A), len(set_B) )
             Adjacency_matrix[i,j] = Adjacency_matrix[j,i] = edge_weight
             
-    # G, pars_sc, Adjacency_matrix = build_subset_graph(dog_community_name_list, community_name_to_img_id, trainsg_dupes=set(), subject_str=None,seed=0)
-    # G_dog_all, dog_pars_sc, Adjacency_matrix = build_subset_graph(dog_community_name_list, community_name_to_img_id, trainsg_dupes=set(), subject_str=None,seed=0)
+    
     labels = []
     for i, x in enumerate(community_name_to_img_id.keys()):
-    # for i, x in enumerate(dog_community_name_list):
         # add a \n
         labels.append(x.replace('(', '\n('))
     A_pd = pd.DataFrame(np.matrix(Adjacency_matrix), index=labels, columns=labels)
@@ -549,12 +523,10 @@ def generate_splitted_metadaset(args):
     print()
     print("=============== ADDITIONAL DATA SAMPLES FROM SECOND ENV ==============")
     test_community_name_to_img_id_all, _ = parse_dataset_scheme(test_set_scheme, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='test', copy=False)
-    # train_community_name_to_img_id, _ = parse_dataset_scheme(train_set_scheme_all, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='train', copy=False)
     additional_test_community_name_to_img_id, _ = parse_dataset_scheme(additional_test_set_scheme, node_name_to_img_id, exclude_img_id=trainsg_dupes, split='test', copy=False)
 
     community_name_to_img_id = test_community_name_to_img_id_all.copy()
     community_name_to_img_id.update(train_community_name_to_img_id)
-    # community_name_to_img_id.update(val_community_name_to_img_id)
     community_name_to_img_id.update(additional_test_community_name_to_img_id)    
     
     for p_com in train_set_scheme['dog'][max_partition]:
@@ -564,14 +536,9 @@ def generate_splitted_metadaset(args):
         community_name_to_img_id.update({p_com:node_name_to_img_id[p_com]})
 
     N_sets = len(community_name_to_img_id.keys())
-    # N_sets = len(dog_community_name_list)
     Adjacency_matrix = np.ones((N_sets, N_sets))
     for i, ii in enumerate(community_name_to_img_id.keys()):
-    # for i, ii in enumerate(dog_community_name_list):
-        # print("ii: ",ii)
-        
         for j,jj in enumerate(community_name_to_img_id.keys()):
-        # for j,jj in enumerate(dog_community_name_list):
             set_A = community_name_to_img_id[ii] - trainsg_dupes
             set_B = community_name_to_img_id[jj] - trainsg_dupes
             overlap_set = set_A.intersection(set_B)
@@ -584,7 +551,6 @@ def generate_splitted_metadaset(args):
             
     labels = []
     for i, x in enumerate(community_name_to_img_id.keys()):
-    # for i, x in enumerate(dog_community_name_list):
         # add a \n
         labels.append(x.replace('(', '\n('))
     A_pd = pd.DataFrame(np.matrix(Adjacency_matrix), index=labels, columns=labels)
@@ -593,7 +559,6 @@ def generate_splitted_metadaset(args):
     spectral_pos = nx.spectral_layout(
         G=G_dog_all, 
         dim=5,
-        # dim = (3,2)
         )
     
     dists = []
@@ -616,14 +581,10 @@ def generate_splitted_metadaset(args):
     subs = np.array(subs)
     cat_sorted_additional_comms = subs[np.argsort(dists)]
 
-    # print("cat_sorted_additional_comms: ", cat_sorted_additional_comms)
     print("============ spectral clustering partitioning for ==============")
     
     com_to_img_id = {}
     exclude_img_id=test_all_img_id.union(trainsg_dupes)
-    
-    # cat_sub_coms = list(cat_sorted_additional_comms)
-    # dog_sub_coms = list(dog_sorted_additional_comms)
 
     cat_sub_coms = []
     dog_sub_coms = []
@@ -632,13 +593,25 @@ def generate_splitted_metadaset(args):
     
     for com_i in train_set_scheme['cat'][f"cat({min_partition.split('(')[1]}"]:
         cat_sub_coms.append(com_i)
-
+    print("cat_sub_coms = ", cat_sub_coms)
+    print("dog_sub_coms = ", dog_sub_coms)
+    
+    # for reproducibility: we copy-paste the order of nodes that gave the equal sizes of partitions to avoid the randomness of node order within a cluster returned by the spectral clustering method
+    if experiment_index == 1:
+        cat_sub_coms = ['cat(pillow)', 'cat(blanket)', 'cat(sheet)', 'cat(couch)', 'cat(comforter)', 'cat(bed)', 'cat(remote control)']
+        dog_sub_coms = ['dog(books)', 'dog(bed)', 'dog(curtain)', 'dog(pillow)', 'dog(sheet)', 'dog(lamp)', 'dog(blanket)', 'dog(remote control)', 'dog(couch)']
+    elif experiment_index == 2:
+        cat_sub_coms =  ['cat(blanket)', 'cat(remote control)', 'cat(sheet)', 'cat(pillow)', 'cat(bed)', 'cat(comforter)', 'cat(couch)']
+        dog_sub_coms =  ['dog(cup)', 'dog(plate)', 'dog(basket)', 'dog(food)', 'dog(box)', 'dog(pole)', 'dog(container)', 'dog(table)']
+    elif experiment_index == 3:
+        cat_sub_coms =  ['cat(blanket)', 'cat(bed)', 'cat(remote control)', 'cat(couch)', 'cat(pillow)', 'cat(comforter)', 'cat(sheet)']
+        dog_sub_coms =  ['dog(cap)', 'dog(sand)', 'dog(glasses)', 'dog(shirt)', 'dog(ball)', 'dog(surfboard)', 'dog(water)']
+    elif experiment_index == 4:
+        cat_sub_coms =  ['cat(bed)', 'cat(pillow)', 'cat(couch)', 'cat(remote control)', 'cat(comforter)', 'cat(sheet)', 'cat(blanket)']
+        dog_sub_coms =  ['dog(basket)', 'dog(woman)', 'dog(car)', 'dog(bottle)', 'dog(bicycle)', 'dog(bike)']
+    
     G, dog_clusters, adj_training = build_subset_graph(dog_sub_coms, node_name_to_img_id, trainsg_dupes=trainsg_dupes, subject_str=None, seed=0)
     G, cat_clusters, adj_training = build_subset_graph(cat_sub_coms, node_name_to_img_id, trainsg_dupes=trainsg_dupes, subject_str=None, seed=0)
-
-     
-    print("cat communities: ", cat_clusters)
-    print("dog communities: ", dog_clusters)
 
     cat_clusters[0] = [i.replace('\n(','(') for i in cat_clusters[0]]
     cat_clusters[1] = [i.replace('\n(','(') for i in cat_clusters[1]]
