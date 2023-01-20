@@ -4,16 +4,12 @@ import numpy as np
 #from torch._C import int8
 from transformers import BertTokenizer, BertModel, DistilBertTokenizer, DistilBertModel
 from torch import nn
-from torch.optim import Adam
 from tqdm import tqdm
 import json
 import glob
-from torch import autograd
-import time
 import argparse
 import random
 import torch
-import copy
 from collections import OrderedDict
 
 
