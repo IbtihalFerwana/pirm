@@ -4,12 +4,9 @@ The script can run both NLP tasks: `scierc` and `aic`
 ### Data
 Download `raw_data` from [SciERC](http://nlp.cs.washington.edu/sciIE/), then preprocess it using `data_reader.py`. 
 
-Run the following commands to get our data splits of four environments, [1980-1989], [1990-1999], [2000-2004], [2005-2009]
+Run the following command to get our data splits of four environments, [1980-1989], [1990-1999], [2000-2004], [2005-2009]. Create `sciERC_temporal` directory to be in the same directory where `language` directory resides.  
 ```
-python data_reader --min_year 1980 --max_year 2001 --period_size 10
-```
-```
-python data_reader --min_year 2000 --max_year 2010 --period_size 5
+python data_reader --raw_data raw_data --output_dir sciERC_temporal
 ```
 
 ##### Example: to run P-IRM (partitioned) on 3 envs
