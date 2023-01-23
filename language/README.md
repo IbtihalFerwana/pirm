@@ -6,7 +6,7 @@ Download `raw_data` from [SciERC](http://nlp.cs.washington.edu/sciIE/), then pre
 
 Run the following command to get our data splits of four environments, [1980-1989], [1990-1999], [2000-2004], [2005-2009]. Create `sciERC_temporal` directory to be in the same directory where `language` directory resides.  
 ```
-python data_reader --raw_data raw_data --output_dir sciERC_temporal
+python data_reader.py --raw_data raw_data --output_dir sciERC_temporal
 ```
 
 ##### Example: to run P-IRM (partitioned) on 3 envs
