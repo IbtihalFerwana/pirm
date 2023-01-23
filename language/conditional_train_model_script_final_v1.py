@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from models import *
 from training_utils import *
+from data_reader import prep_scierc, prep_aic
 from torch import nn
 from torch.optim import Adam
 import json
@@ -14,7 +15,8 @@ import random
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='time alignment -- BERT IRM')
-    parser.add_argument('--data_dir', type=str, default='data', help='data directory')
+    #parser.add_argument('--data_dir', type=str, default='data', help='data directory')
+    parser.add_argument('--raw_data', type=str, default='data', help='data directory')
     parser.add_argument('--training_years', nargs='+', default = ['1980','1990','2000','2005','2010'], help='train list of partitioned periods, indicated by the starting year')
     parser.add_argument('--testing_years', nargs='+', default = ['1980','1990','2000','2005','2010'], help='test list of partitioned periods, indicated by the starting year')
     parser.add_argument('--train_conditioning', nargs='+', default = ['1980','1990','2000','2005','2010'], help='environments for conditioning')
@@ -31,7 +33,6 @@ if __name__ == "__main__":
     parser.add_argument('--ib_step',  type = int, default = 10 , help='penalty_anneal_iters for IB')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--model_path', type=str, default='saved_models/', help='checkpoints')
-    parser.add_argument('--data_split', type=str, default='equal_split', help='define env split')
     parser.add_argument('--model', type=str, default='bert', help='language model for finetuning, bert or distilbert')
     parser.add_argument('--linear_probing', type=bool, default=False, help='do linear finetuning')
     parser.add_argument('--lin_epochs', type=int, default=20, help='epochs for linear finetuning')
@@ -46,12 +47,11 @@ if __name__ == "__main__":
     training_years = args.training_years
     testing_years = args.testing_years
     train_conditioning = args.train_conditioning
-    data_dir = args.data_dir
+    raw_data = args.raw_data
     output_file = args.output_file
     learning_rate = args.learning_rate
     batch_size = args.batch_size
     model_name = args.model
-    data_split = args.data_split
     linear_probing = args.linear_probing
     seed = args.seed
     nlp_task = args.task
@@ -83,9 +83,11 @@ if __name__ == "__main__":
     if nlp_task == 'scierc':
         print('Dataset: SciERC')
         num_classes = 6
+        data_dir = prep_scierc(raw_data)
     elif nlp_task == 'aic':
         print('Dataset: AIC')
         num_classes = 2
+        data_dir = prep_aic(raw_data)
 
     train_period = '_'.join(training_years)
     if model_name == 'bert':

@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import numpy as np
+import glob
 
 
 def get_years_strings(yr_list):
@@ -9,9 +10,6 @@ def get_years_strings(yr_list):
         raise ValueError("min_year must be greater than or equal 1980")
     if yr_list[-1] > 2016:
         raise ValueError("max_year must be less than or equal 2016")
-    
-    #yrs_lst = list(np.arange(min_year, max_year, period_size))
-    #yrs_lst.append(max_year)
     
     yrs_string = [str(yr)+"-"+str(yr_list[i+1]-1) for i, yr in enumerate(yr_list[:-1])]
     
@@ -56,11 +54,9 @@ def split_data(raw_data, yrs_lst, outfiles):
         print(subdir)
 
         for file in files:
-            #print os.path.join(subdir, file)
             filepath = subdir + os.sep + file
 
             if file.endswith(".txt"):
-    #             print(file)
                 if "-" in file:
                     year = file.split("-")[0]
                     year = year[-2:]
@@ -71,24 +67,20 @@ def split_data(raw_data, yrs_lst, outfiles):
                 else:
                     year = file.split("_")[1]
                 year = int(year)
-    #             print(year)
                 if year not in per_year_stats:
                     per_year_stats[year] = 0
-                    # all_data[year] = []
 
                 with open(filepath, 'r') as f:
                     text = f.read().replace("\n", " ").replace("\t", " ").strip()
 
                 with open(filepath.replace('.txt', '.ann'), 'r') as f:
                     for line in f.readlines():
-    #                     print("### line ",line)
                         line = line.replace('\n', '')
                         line_split = line.split('\t')
                         if len(line_split) == 3:
                             ent_type = line_split[1].split(" ")[0]
                             type_idx = all_types_to_idx[ent_type]
                             mention = line_split[2]
-    #                         print(mention, ent_type)
                             row = {
                                 'text': f"{mention} [SEP] {text}",
                                 'labels': type_idx,
@@ -107,11 +99,6 @@ def split_data(raw_data, yrs_lst, outfiles):
     print('-- Data Stats --')
     for year, rows in all_data.items():
         
-        #if len(rows) > 800:
-        #    train_size = 600
-        #else:
-        #    train_size = 400
-        
         train_env_len = len(rows)
         a = np.arange(train_env_len)
         np.random.shuffle(a)
@@ -127,10 +114,6 @@ def split_data(raw_data, yrs_lst, outfiles):
 
         print(train_env_len)
 
-        #train = rows[:train_size]
-        #split_sizes = int((len(rows) - train_size)/2)
-        #test = rows[train_size:train_size + split_sizes]
-        #dev = rows[train_size + split_sizes:train_size + 2*split_sizes]
         train = [rows[i] for i in train_indices]
         test = [rows[i] for i in test_indices]
         val = [rows[i] for i in val_indices]
@@ -144,32 +127,8 @@ def split_data(raw_data, yrs_lst, outfiles):
     print('files written')
     return per_year_stats
     
-    
-    
-if __name__ == "__main__":
-    
-    parser = argparse.ArgumentParser(description='time alignment -- read and split data')
-    parser.add_argument('--raw_data', type=str, default='raw_data', help='raw data directory')
-    # parser.add_argument('--min_year', type=int, default=1980, help='minimum year in period range - included')                     
-    # parser.add_argument('--max_year', type=int, default=2017, help='maximum year in period range - excluded')
-    # parser.add_argument('--period_size', type=int, default=10, help='splitting years interval into equal sizes, left overs will have smaller size')
-    parser.add_argument('--output_dir', type=str, default='sciERC_temporal', help='output directory') 
-    args = parser.parse_args()
-    # min_year = args.min_year
-    # max_year = args.max_year
-    # period_size = args.period_size
-    output_dir = args.output_dir
-    raw_data = args.raw_data                                   
-    
-    
-    # yrs_lst, yrs_string = get_years_list(min_year, max_year, period_size)
-    # outfiles = create_files_splits(yrs_lst, yrs_string,output_dir)
-    # split_data(raw_data, yrs_lst, outfiles)
-
-    #new_years_list = [1980, 1990, 2000, 2005, 2010, 2016]
-
-    ### equal splits
-    #new_years_list = [1980, 1992, 2000, 2003, 2005, 2006, 2008, 2013, 2016]
+def prep_scierc(raw_data):
+    output_dir = f'{raw_data}/preprocessed'
     new_years_list = [1980, 1990, 2000, 2005, 2010, 2016]
 
     yrs_string = get_years_strings(new_years_list)
@@ -177,4 +136,40 @@ if __name__ == "__main__":
 
     outfiles = create_files_splits(new_years_list, yrs_string, output_dir)
     per_year_stats = split_data(raw_data, new_years_list, outfiles)
-    #split_data(raw_data, yrs_lst, outfiles)
+    return output_dir
+
+def prep_aic(raw_data):
+    output_dir = f'{raw_data}/preprocessed'
+    splits = ['train','test','dev']
+    for split in splits:
+        if split == 'train':
+            g = glob.glob(f'{raw_data}/{split}/indivis/*')
+        else:
+            g = glob.glob(f'{raw_data}/{split}/*')
+        if split == 'dev':
+            new_split_dir = f'{output_dir}/val'
+        else:
+            new_split_dir = f'{output_dir}/{split}'
+        
+        if not os.path.exists(f'{new_split_dir}'):
+            os.makedirs(f'{new_split_dir}')
+        
+        for g1 in g:
+            print(g1)
+            newfile_name = g1.split('/')[-1]
+            newfile_name = f'{new_split_dir}/{newfile_name}'
+            
+            dict_list = []
+            with open(g1,'r') as f:
+                d = f.readlines()
+                for txt in d:
+                    doi_obj = eval(txt)
+                    text = doi_obj['text']
+                    label = doi_obj['label']
+                    row = {"text":text,
+                            "labels":label}
+                    dict_list.append(json.dumps(row))
+            with open(newfile_name, 'w') as fp:
+                fp.write('\n'.join(dict_list))
+            print("new file: ", newfile_name)
+    return output_dir
