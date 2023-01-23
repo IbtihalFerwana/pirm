@@ -2,17 +2,12 @@ The script can run both NLP tasks: `scierc` and `aic`
 
 ## SciERC
 ### Data
-Download `raw_data` from [SciERC](http://nlp.cs.washington.edu/sciIE/), then preprocess it using `data_reader.py`. 
-
-Run the following command to get our data splits of four environments, [1980-1989], [1990-1999], [2000-2004], [2005-2009]. Create `sciERC_temporal` directory to be in the same directory where `language` directory resides.  
-```
-python data_reader.py --raw_data raw_data --output_dir sciERC_temporal
-```
+Download `raw_data` from [SciERC](http://nlp.cs.washington.edu/sciIE/).
 
 ##### Example: to run P-IRM (partitioned) on 3 envs
 
 ```
-python conditional_train_model_script_final_v1.py \
+python pirm/language/conditional_train_model_script_final_v1.py \
 --batch_size 8 \
 --penalty_weight 1000 \
 --penalty_anneal_iters 40 \
@@ -20,10 +15,9 @@ python conditional_train_model_script_final_v1.py \
 --method "irm" \
 --testing_years 2010 \
 --train_conditioning 1990 2000 2005 \
---data_dir 'sciERC_temporal' \
---data_split 'simple_split' \
+--raw_data 'raw_data' \
 --model 'bert' \
---epochs 80 \
+--epochs 1 \
 --model_path 'partitioned_models_epochs80_bs8' \
 --seed 0 \
 --save_training_history True \
@@ -34,19 +28,18 @@ python conditional_train_model_script_final_v1.py \
 ##### Example: to run P-IRM (conditioned) on 3 envs
 
 ```
-python conditional_train_model_script_final_v1.py \
+python pirm/language/conditional_train_model_script_final_v1.py \
 --batch_size 8 \
---penalty_weight 100 \
---penalty_anneal_iters 30 \
+--penalty_weight 1000 \
+--penalty_anneal_iters 40 \
 --training_years 1980 1990 2000 2005 \
 --method "irm" \
 --testing_years 2010 \
 --train_conditioning 1990 2000 2005 \
---data_dir 'sciERC_temporal' \
---data_split 'simple_split' \
+--raw_data 'raw_data' \
 --model 'bert' \
---epochs 80 \
---model_path 'conditioned_models_epochs80_bs8' \
+--epochs 1 \
+--model_path 'partitioned_models_epochs80_bs8' \
 --seed 0 \
 --save_training_history True \
 --save_best_model True \
@@ -55,20 +48,16 @@ python conditional_train_model_script_final_v1.py \
 
 ## AIC
 ### Data
-Download [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic) and follow the [lfs](https://git-lfs.github.com/) instructions to download AIC data. Then run `aic_data_reader.py` to organize the data to match our scheme 
+Download [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic) and follow the [lfs](https://git-lfs.github.com/) instructions to download AIC data. Save data into `raw_data` directory
 
-### Example
-```
-python aic_data_reader.py --raw_data 'data' --output_dir 'data/preprocessed'
-```
+##### Example: to run P-IRM (conditioned) on 2 envs
 
 ```
-python conditional_train_model_script_final_v1.py \
+python pirm/language/conditional_train_model_script_final_v1.py \
 --training_years 2006 2009 2012 2015 \
 --method "irm" \
 --testing_years 2018 \
---data_dir "data" \
---data_split "preprocessed" \
+--raw_data "raw_data" \
 --model "bert" \
 --save_training_history True \
 --save_best_model True \
@@ -79,7 +68,7 @@ python conditional_train_model_script_final_v1.py \
 --model_path 'aic_conditioned_ibirm_models_epochs40_bs8' \
 --batch_size 8 \
 --ib_lambda 0.1 \
---epochs 40 \
+--epochs 1 \
 --task "aic" 
 ```
 #### Time periods are defined as following (same for erm):
