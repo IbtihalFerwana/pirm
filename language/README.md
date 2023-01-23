@@ -6,13 +6,13 @@ Download `raw_data` from [SciERC](http://nlp.cs.washington.edu/sciIE/), then pre
 
 Run the following command to get our data splits of four environments, [1980-1989], [1990-1999], [2000-2004], [2005-2009]. Create `sciERC_temporal` directory to be in the same directory where `language` directory resides.  
 ```
-python data_reader --raw_data raw_data --output_dir sciERC_temporal
+python data_reader.py --raw_data raw_data --output_dir sciERC_temporal
 ```
 
 ##### Example: to run P-IRM (partitioned) on 3 envs
 
 ```
-python conditional_train_model_script_final_v1.py 
+python conditional_train_model_script_final_v1.py \
 --batch_size 8 \
 --penalty_weight 1000 \
 --penalty_anneal_iters 40 \
@@ -34,7 +34,7 @@ python conditional_train_model_script_final_v1.py
 ##### Example: to run P-IRM (conditioned) on 3 envs
 
 ```
-python conditional_train_model_script_final_v1.py 
+python conditional_train_model_script_final_v1.py \
 --batch_size 8 \
 --penalty_weight 100 \
 --penalty_anneal_iters 30 \
@@ -77,7 +77,7 @@ python conditional_train_model_script_final_v1.py \
 --seed 100 \
 --train_conditioning 2012 2015 \
 --model_path 'aic_conditioned_ibirm_models_epochs40_bs8' \
---batch_size 8\
+--batch_size 8 \
 --ib_lambda 0.1 \
 --epochs 40 \
 --task "aic" 
