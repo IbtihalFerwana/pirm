@@ -77,7 +77,7 @@ python conditional_train_model_script_final_v1.py \
 --seed 100 \
 --train_conditioning 2012 2015 \
 --model_path 'aic_conditioned_ibirm_models_epochs40_bs8' \
---batch_size 8\
+--batch_size 8 \
 --ib_lambda 0.1 \
 --epochs 40 \
 --task "aic" 
