@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from transformers import BertModel, DistilBertModel, GPT2Model
+from transformers import BertTokenizer, BertModel, DistilBertTokenizer, DistilBertModel, GPT2Model, GPT2Tokenizer
 from torch import nn
 
 class BertClassifier(torch.nn.Module):
