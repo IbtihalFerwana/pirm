@@ -46,8 +46,6 @@ if __name__ == '__main__':
 
     base_script += ' --details '+args.details
     
-
-    shuffle_seeds = [42]
     seeds = [i for i in range(3)]
     lrs = [5e-5]
     bss = [8]

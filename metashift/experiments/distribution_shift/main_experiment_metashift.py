@@ -260,7 +260,7 @@ def report_every_set_acc(my_dataset, args, split='val'):
         res_df.append(info_res)
     if (args.experiment == 'ibirm') | (args.experiment == 'p1ibirm') | (args.experiment == 'p2ibirm'):
         details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_penibirm_{args.ib_lambda}_ibanneal_{args.ib_penalty_anneal_iters}_bs_{args.batch_size}_partition_details_{split}.json'
-    elif (args.experiment == 'irm') | (args.experiment == 'p1') | (args.experiment == 'p2'):
+    elif (args.experiment == 'irm') | (args.experiment == 'p1irm') | (args.experiment == 'p2irm'):
         details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_bs_{args.batch_size}_partition_details_{split}.json'
     elif (args.experiment == 'erm') | (args.experiment == 'p1erm') | (args.experiment == 'p2erm'):
         details = f'{args.details}_seed_{str(args.seed)}_lr_{args.lr}_bs_{args.batch_size}_partition_details_{split}.json'
@@ -322,7 +322,7 @@ def report_every_set_acc(my_dataset, args, split='val'):
         logging.info(info_str)
     if (args.experiment == 'ibirm') | (args.experiment == 'p1ibirm') |  (args.experiment == 'p2ibirm'):
         details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_penibirm_{args.ib_lambda}_ibanneal_{args.ib_penalty_anneal_iters}_bs_{args.batch_size}_partition_{split}.json'
-    elif (args.experiment == 'irm') | (args.experiment == 'p1') | (args.experiment == 'p2'):
+    elif (args.experiment == 'irm') | (args.experiment == 'p1irm') | (args.experiment == 'p2irm'):
         details = f'{args.details}_seed_{str(args.seed)}_pen_{str(args.irm_lambda)}_lr_{args.lr}_anneal_{args.anneal}_bs_{args.batch_size}_partition_{split}.json'
     elif (args.experiment == 'erm') | (args.experiment == 'p1erm') | (args.experiment == 'p2erm'):
         details = f'{args.details}_seed_{str(args.seed)}_lr_{args.lr}_bs_{args.batch_size}_partition_{split}.json'
