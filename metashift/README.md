@@ -49,19 +49,19 @@ python dataset/domain_generalization_cat_dog_pirm_ii.py
  ```
 
 
-2. Run experiments with grid search on `irm` and `ibirm` penalties and annealing iteration values
+2. Run one experiment of IRM algorithm with partial invariance
  ```
- python run_main_experiment.py \
-    --pyfile 'experiments/distribution_shift/main_experiment_metashift.py' \
-    --penalties_irm 10 100 1000 \
-    --penalties_ibirm 10 100 1000 \
-    --anneals_irm 20 40 \
-    --anneals_ibirm 20 40 \
-    --raw_results_folder 'raw_results_dg_cats_dogs' \
-    --data 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' \
-    --output_dir train_outputs/experiment_exp1-A \
-    --details experiment_exp1-A \
-    --exps irm p1 ibirm p1ibirm erm p1erm
+python train.py \
+    --irm_penalty 10 \
+    --irm_anneal 20 \
+    --seed 0 \
+    --experiment 'DG' \
+    --experiment_id 'experiment_exp1-A' \
+    --algorithm 'irm' \
+    --output_dir 'train_outputs/experiment_exp1-A' \
+    --data_dir 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' \
+    --results_folder 'raw_results_dg_cats_dogs' \
+    --partial
  ```
 3. Extract results using `reading_dg_results.py`
 
@@ -108,18 +108,19 @@ python dataset/domain_generalization_cat_dog_pirm_ii.py
         ├── cat/
         ├── dog/ 
 ```
-2. Run experiments with grid search on `irm` and `ibirm` penalties and annealing iteration values
+2. Run one experiment of IB_IRM without partial invariance
  ```
- python run_main_experiment.py \
-    --pyfile 'experiments/distribution_shift/main_experiment_metashift.py' \
-    --penalties_irm 10 100 1000 \
-    --penalties_ibirm 10 100 1000 \
-    --anneals_irm 20 40 \
-    --anneals_ibirm 20 40 \
-    --raw_results_folder 'raw_results_sps_cats_dogs' \
-    --data 'data/subpopulationshift_pirm_ii_exp1_A' \
-    --output_dir train_outputs/experiment_exp1-A \
-    --details experiment_exp1-A \
-    --exps irm p1 p2 ibirm p1ibirm p2ibirm erm p1erm p2erm
+python train.py \
+   --irm_penalty 10 \
+   --irm_anneal 40 \
+   --ibirm_penalty 10 \
+   --ibirm_anneal 20 \
+   --seed 0 \
+   --experiment 'SP' \
+   --experiment_id 'experiment_exp1-A' \
+   --algorithm 'irm' \
+   --output_dir 'reprod_01_25_output_sp' \
+   --data_dir 'data/subpopulationshift_pirm_ii_exp1_A' \
+   --results_folder 'raw_results_sps_cats_dogs' 
  ```
 3. Extract results using `reading_subpopulationshifts_results.py`
