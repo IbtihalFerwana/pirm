@@ -77,25 +77,15 @@ if __name__ == '__main__':
     
     data_indicator = ''
     data_indicator2 = ''
-    if args.experiment == 'DG':
-        if partial:
-            domains_config = 'domains/cat_dog_pirm_1.json'
-            data_indicator = 'p1'
-        else:
-            domains_config = 'domains/cat_dog_irm.json'
-            data_indicator = 'irm'
-    elif args.experiment == 'SP':
-        if partial:
-            domains_config = 'domains/pirm_domains.json'
-            data_indicator = 'p1'
+    if partial:
+        domains_config = 'domains/cat_dog_pirm_1.json'
+        data_indicator = 'p1'
+        if args.experiment == 'SP':
             data_indicator2 = 'p2'
-        else:
-            domains_config = 'domains/irm_domains.json'
-            data_indicator = 'irm'
+            domains_config2 = 'domains/cat_dog_pirm_2.json'
     else:
-        raise Exception('Use either "DO" or "SP"')
+        domains_config = 'domains/cat_dog_irm.json'
+        data_indicator = 'irm'
     train_experiment(args, base_script, domains_config, data_indicator)
     if args.experiment == 'SP' and partial:
-        train_experiment(args, base_script, domains_config, data_indicator2)
-
-
+        train_experiment(args, base_script, domains_config2, data_indicator2)
