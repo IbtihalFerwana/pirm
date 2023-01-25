@@ -28,7 +28,8 @@ import argparse
 import Constants
 import networkx as nx
 from sklearn.model_selection import train_test_split
-IMAGE_DATA_FOLDER          = Constants.IMAGE_DATA_FOLDER
+# IMAGE_DATA_FOLDER          = Constants.IMAGE_DATA_FOLDER (from Metashift code)
+IMAGE_DATA_FOLDER = ''
 
 from generate_full_MetaShift import preprocess_groups, copy_image_for_subject
 from generate_full_MetaShift_exp1 import build_subset_graph
@@ -266,6 +267,8 @@ def copy_images(root_folder,  split, subset_str, img_IDs, use_symlink=True):
 
 def generate_splitted_metadaset(args):
     CUSTOM_SPLIT_DATASET_FOLDER = args.dataset_name
+    global IMAGE_DATA_FOLDER 
+    IMAGE_DATA_FOLDER = args.images_folder
     if os.path.isdir(CUSTOM_SPLIT_DATASET_FOLDER): 
         shutil.rmtree(CUSTOM_SPLIT_DATASET_FOLDER) 
     os.makedirs(CUSTOM_SPLIT_DATASET_FOLDER, exist_ok = False)
@@ -273,7 +276,7 @@ def generate_splitted_metadaset(args):
     experiment_index = args.experiment_index
 
 
-    node_name_to_img_id, most_common_list, subjects_to_all_set, subject_group_summary_dict = preprocess_groups(output_files_flag=False)
+    node_name_to_img_id, most_common_list, subjects_to_all_set, subject_group_summary_dict = preprocess_groups(IMAGE_DATA_FOLDER, output_files_flag=False)
 
     ##################################
     # Removing ambiguous images that have both cats and dogs 
@@ -685,6 +688,7 @@ def generate_splitted_metadaset(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Domain Generalization dataset')
+    parser.add_argument('--images_folder',type=str,default='../../../genome_vision_data/data/GQA/allImages/images/')
     parser.add_argument('--dataset_name', type=str, default='data/MetaShift/MetaShift-domain-generalization-exp')
     parser.add_argument('--add_p', type=float, default=0, help='used values are {0, 0.10, 0.25}')
     parser.add_argument('--experiment_index', type=int, default=1, help='number of experiment based on the paper main text, table 2')

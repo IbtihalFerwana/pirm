@@ -71,8 +71,8 @@ import argparse
 import Constants
 import networkx as nx
 from sklearn.model_selection import train_test_split
-IMAGE_DATA_FOLDER          = Constants.IMAGE_DATA_FOLDER
-
+#IMAGE_DATA_FOLDER          = Constants.IMAGE_DATA_FOLDER # from Metashift code
+IMAGE_DATA_FOLDER = ''
 from generate_full_MetaShift import preprocess_groups, build_subset_graph, copy_image_for_subject
 from generate_full_MetaShift_exp1 import build_subset_graph as sG
 import random
@@ -238,8 +238,11 @@ def generate_splitted_metadaset(args):
         shutil.rmtree(root_folder) 
     os.makedirs(root_folder, exist_ok = False)
 
+    global IMAGE_DATA_FOLDER 
+    IMAGE_DATA_FOLDER = args.images_folder
 
-    node_name_to_img_id, most_common_list, subjects_to_all_set, subject_group_summary_dict = preprocess_groups(output_files_flag=False)
+
+    node_name_to_img_id, most_common_list, subjects_to_all_set, subject_group_summary_dict = preprocess_groups(IMAGE_DATA_FOLDER,output_files_flag=False)
 
     ##################################
     # Removing ambiguous images that have both cats and dogs 
@@ -1040,6 +1043,7 @@ def copy_images(root_folder,  split, subset_str, img_IDs, use_symlink=True):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='cluster creation')
+    parser.add_argument('--images_folder',type=str,default='../../../genome_vision_data/data/GQA/allImages/images/')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--data_folder', type=str, default='data/MetaShift/subpopulationshift_pirm_ii')
     parser.add_argument('--mp',help='minority_percentage', type=float, default=0.12)

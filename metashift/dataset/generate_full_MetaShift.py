@@ -47,7 +47,8 @@ import pandas as pd
 from sklearn.decomposition import TruncatedSVD
 
 import Constants
-IMAGE_DATA_FOLDER      = Constants.IMAGE_DATA_FOLDER
+#IMAGE_DATA_FOLDER      = Constants.IMAGE_DATA_FOLDER
+IMAGE_DATA_FOLDER = ''
 
 ONLY_SELECTED_CLASSES  = Constants.ONLY_SELECTED_CLASSES 
 
@@ -252,7 +253,9 @@ def draw_subject_set_graph(subject_most_common_list, node_name_to_img_id, trains
 
 IMGAGE_SUBSET_SIZE_THRESHOULD = 25 
 
-def preprocess_groups(output_files_flag=True, subject_classes = Constants.SELECTED_CLASSES):
+def preprocess_groups(image_data_folder, output_files_flag=True, subject_classes = Constants.SELECTED_CLASSES):
+    global IMAGE_DATA_FOLDER
+    IMAGE_DATA_FOLDER = image_data_folder
 
     os.makedirs('./meta-graphs', exist_ok = True)
 
@@ -354,4 +357,4 @@ def preprocess_groups(output_files_flag=True, subject_classes = Constants.SELECT
     return node_name_to_img_id, most_common_list, subjects_to_all_set, subject_group_summary_dict
 
 if __name__ == '__main__':
-    preprocess_groups(output_files_flag=True)
+    preprocess_groups(image_data_folder, output_files_flag=True)
