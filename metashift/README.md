@@ -9,15 +9,17 @@ Arguments
 --dataset_name: the output directory for the generated data 
 --add_p: the percentage of overlap between the two domains, options = {0,0.10,0.25}
 --experiment_index: the experiment number referencing the main text (table 2), options = {1,2,3,4} 
+--images_folder: the directory where 'genome_vision_data/data/GQA/allImages/images/' is
 ```
  
 #### Example: 
 - creating dataset with no overlap between environments 
 ```
-python dataset/domain_generalization_cat_dog_pirm_ii.py 
---dataset_name 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' 
---add_p 0 
---experiment_index 1
+python dataset/domain_generalization_cat_dog_pirm_ii.py \
+--dataset_name 'data/Domain-Generalization-Cat-Dog-pirmii-exp1-A' \
+--add_p 0 \
+--experiment_index 1 \
+--images_folder '../../genome_vision_data/data/GQA/allImages/images/' 
 ```
 
 - The output directory looks like following. The set of samples in `p1` is the one closer to the test data in terms of distance. 
@@ -70,7 +72,7 @@ python train.py \
 1. Create the dataset using `dataset\create_subpopulation_pirm_ii.py`
  
 #### Example: 
-- creating dataset with no overlap and minority group percentage is 12% `python dataset/create_subpopulation_pirm_ii.py --data_folder 'data/subpopulationshift_pirm_ii_exp1_A' --mp 0.12 --add_p 0`
+- creating dataset with no overlap and minority group percentage is 12% `python dataset/create_subpopulation_pirm_ii.py --data_folder 'data/subpopulationshift_pirm_ii_exp1_A' --mp 0.12 --add_p 0 --images_folder '../../genome_vision_data/data/GQA/allImages/images/'`
 
 - The output directory looks like following. Here `p1` and `p2` include samples from `indoor` and `outdoor` respectively. 
 ```
