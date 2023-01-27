@@ -1,21 +1,19 @@
 import pandas as pd
-import torch
 import numpy as np
+import torch
+from torch import nn
+from torch.optim import Adam
 from models import *
 from training_utils import *
 from data_reader import prep_scierc, prep_aic
-from torch import nn
-from torch.optim import Adam
 import json
 import glob
-from torch import autograd
-import time
+#import time
 import argparse
 import random
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='time alignment -- BERT IRM')
-    #parser.add_argument('--data_dir', type=str, default='data', help='data directory')
     parser.add_argument('--raw_data', type=str, default='data', help='data directory')
     parser.add_argument('--training_years', nargs='+', default = ['1980','1990','2000','2005','2010'], help='train list of partitioned periods, indicated by the starting year')
     parser.add_argument('--testing_years', nargs='+', default = ['1980','1990','2000','2005','2010'], help='test list of partitioned periods, indicated by the starting year')
@@ -24,11 +22,11 @@ if __name__ == "__main__":
     parser.add_argument('--method',  type = str, default = "erm" , help='ERM or IRM')
     parser.add_argument('--epochs',  type = int, default = 50, help='number of training epochs')
     parser.add_argument('--learning_rate',  type = float, default =1e-6 , help='learning rate')
-    parser.add_argument('--l2_regularizer',  type = float, default =0.00 , help='l2_regularizer_weight for IRM')
+    parser.add_argument('--l2_regularizer',  type = float, default = 0. , help='l2_regularizer_weight for IRM')
     parser.add_argument('--penalty_weight',  type = float, default = 1e3 , help='penalty_weight for IRM')
     parser.add_argument('--penalty_anneal_iters',  type = float, default=10 , help='penalty_anneal_iters for IRM')
     parser.add_argument('--inter',  type = int, default = 2 , help='specify layer for imposing bottleneck penalty')
-    parser.add_argument('--ib_lambda',  type = float, default = 0.0 , help='IB penalty weight')
+    parser.add_argument('--ib_lambda',  type = float, default = 0. , help='IB penalty weight')
     parser.add_argument('--class_condition',  type = float, default = False , help='IB penalty classwise application')
     parser.add_argument('--ib_step',  type = int, default = 10 , help='penalty_anneal_iters for IB')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
@@ -39,6 +37,7 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=0, help='seed for model init')
     parser.add_argument('--save_training_history', type=bool, default=True, help='save stats in dataframe')
     parser.add_argument('--save_best_model', type=bool, default=True, help='save best model weights based on avg validation acc')
+    parser.add_argument('--use_best_model', type=bool, default=False, help='use best model weights (based on avg validation acc) for final ood testing')
     parser.add_argument('--epoch_print_step', type=int, default=1, help='epochs for printing model performance')
     parser.add_argument('--task', type=str, default='scierc', help='select nlp tasks: scierc, aic')
     
@@ -55,21 +54,17 @@ if __name__ == "__main__":
     linear_probing = args.linear_probing
     seed = args.seed
     nlp_task = args.task
-    print("Args penalty_anneal_iters: ", args.penalty_anneal_iters)
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
-    print("conditioned on years: ", train_conditioning)
     
     
-    stime = time.time()
+    #stime = time.time()
     files = []
     val_files = []
     test_res = []
     dataloaders = []
     
     criterion = nn.CrossEntropyLoss()
-
-
     random.seed(seed)
     torch.manual_seed(seed)
 
@@ -113,9 +108,7 @@ if __name__ == "__main__":
     env_sizes = []
 
     for i, yr in enumerate(training_years): 
-        print(yr)
-        
-        #g = glob.glob("{}/{}/train/{}*".format(data_dir, data_split, yr))
+        #print(yr)
         g = glob.glob("{}/train/{}*".format(data_dir, yr))
         train_file_i = g[0]
         text_list = []
@@ -134,15 +127,12 @@ if __name__ == "__main__":
         training_data.append(text_list)
         training_label.append(labels_list)
             
-
-        #g_val = glob.glob("{}/{}/val/{}*".format(data_dir, data_split, yr))
         g_val = glob.glob("{}/val/{}*".format(data_dir, yr))
         val_files.append(g_val[0])
     
     #### build train environments
 
     envs = [{} for i in range(len(training_data))]
-
     i = 0
 
     for text_list, labels_list in zip(training_data, training_label):
@@ -159,10 +149,10 @@ if __name__ == "__main__":
             envs[i]["penalty_condition"] = False
 
         i+=1
-    #### add validation environments here
     
     steps = np.max(env_sizes)//batch_size
 
+    #### build validation environments
     i = 0
     for val_file in val_files:
         text_list_val = []
@@ -187,56 +177,47 @@ if __name__ == "__main__":
 
     ### if load best model, uncomment below
 
-    #PATH = args.model_dir+'_best_model_ckpt'
-    #checkpoint = torch.load(PATH)
-    #model.load_state_dict(checkpoint['model_state_dict'])
-    #best_epoch = checkpoint['epoch']
-    #best_val_accuracy = checkpoint['validation_acc']
-    #model.to(device)
-    #use_cuda = torch.cuda.is_available()
-    #device = torch.device("cuda" if use_cuda else "cpu")
+    if args.use_best_model:
+        PATH = args.model_dir+'_best_model_ckpt'
+        checkpoint = torch.load(PATH)
+        model.to("cpu")
+        model.load_state_dict(checkpoint['model_state_dict'])
+        best_epoch = checkpoint['epoch']
+        best_val_accuracy = checkpoint['validation_acc']
 
+    model.to(device)
     training_accs=[]
 
     for env in envs:
         
-        mean_train_loss, mean_train_acc = evaluate(model, env["train_dataloader"], use_cuda)
-
+        mean_train_loss, mean_train_acc = evaluate(model, env["train_dataloader"], use_cuda, criterion)
         training_accs.append(mean_train_acc)
         d = {"train_period":env["year"],"train_accuracy":mean_train_acc}
         print(d)
     
-    # all periods tested together (overall accuracy)
+    # avg training accuracy
     if len(envs) > 1:
-        print("all training periods")
-
         d = {"train_period":','.join([env["year"] for env in envs]), "mean_train_acc":np.mean(training_accs)}
         print(d)
 
 
-
-    ### get final testing accuracy
+    ### get testing accuracy
 
     testing_accs = []
     test_years = []
 
     for yr_test in testing_years:
-        #g = glob.glob("{}/{}/test/{}*".format(data_dir, data_split, yr_test))
         g = glob.glob("{}/test/{}*".format(data_dir, yr_test))
 
 
-        if(yr_test not in training_years):
-            ### add more data from years not trained on (extra OOD testing data)
-            #g1 = glob.glob("{}/{}/train/{}*".format(data_dir, data_split, yr_test))
-            g1 = glob.glob("{}/train/{}*".format(data_dir, yr_test))
-        
-        else:
-            g1 = None
-
-        print(yr_test)
+        ### uncomment to add more data from years not trained on (extra OOD testing data)
+        # if(yr_test not in training_years):
+        #     #g1 = glob.glob("{}/{}/train/{}*".format(data_dir, data_split, yr_test))
+        #     g1 = glob.glob("{}/train/{}*".format(data_dir, yr_test))
+        # else:
+        #     g1 = None
 
         test_file_i = g[0]
-
         test_text_list = []
         test_labels_list = []
 
@@ -258,12 +239,9 @@ if __name__ == "__main__":
 
         
         test_data = [test_text_list, test_labels_list]
-
         test_data = Dataset(test_data, tokenizer,nlp_task)
-
         test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=batch_size)
-        
-        test_loss, test_acc = evaluate(model, test_dataloader, use_cuda)
+        test_loss, test_acc = evaluate(model, test_dataloader, use_cuda, criterion)
 
         testing_accs.append(test_acc) 
 
@@ -271,20 +249,18 @@ if __name__ == "__main__":
         print(d)
         test_years.append(yr_test)
     
-    # all periods tested together (overall accuracy)
+    # avg testing accuracy (overall accuracy)
     if len(testing_years) > 1:
-        #test_data = [all_test_text, all_test_label]
-        print("all testing periods")
-
         d = {"test_period":','.join(testing_years), "test_acc":np.mean(testing_accs)}
         print(d)
     
 
-    df = pd.DataFrame(list(zip(test_years, testing_accs)),\
-                                columns =['test_year', 'test_avg_acc'])
-    df.to_pickle(args.model_path+'_model_test_results')
+    ### uncomment to save test results in a dataframe
+    # df = pd.DataFrame(list(zip(test_years, testing_accs)),\
+    #                             columns =['test_year', 'test_avg_acc'])
+    # df.to_pickle(args.model_path+'_model_test_results')
 
     model.to("cpu")
     
-    etime=time.time()
-    print("time: ", (etime-stime)/60)
+    #etime=time.time()
+    #print("time: ", (etime-stime)/60)

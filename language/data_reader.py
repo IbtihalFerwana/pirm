@@ -105,7 +105,6 @@ def split_data(raw_data, yrs_lst, outfiles):
 
         train_split = 0.75
         test_split = 0.15
-        val_split = 0.1
 
         train_indices = a[:int(train_env_len * train_split)]
         test_indices = a[int(train_env_len * train_split):int(train_env_len * (train_split+test_split))]
@@ -128,18 +127,18 @@ def split_data(raw_data, yrs_lst, outfiles):
     return per_year_stats
     
 def prep_scierc(raw_data):
-    output_dir = f'{raw_data}/preprocessed'
+    output_dir = f'{raw_data}/preprocessed_scierc'
     new_years_list = [1980, 1990, 2000, 2005, 2010, 2016]
 
     yrs_string = get_years_strings(new_years_list)
     print(yrs_string)
 
     outfiles = create_files_splits(new_years_list, yrs_string, output_dir)
-    per_year_stats = split_data(raw_data, new_years_list, outfiles)
+    _ = split_data(raw_data, new_years_list, outfiles)
     return output_dir
 
 def prep_aic(raw_data):
-    output_dir = f'{raw_data}/preprocessed'
+    output_dir = f'{raw_data}/preprocessed_aic'
     splits = ['train','test','dev']
     for split in splits:
         if split == 'train':

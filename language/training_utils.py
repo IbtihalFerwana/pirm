@@ -1,11 +1,8 @@
 import pandas as pd
-import torch
 import numpy as np
-#from torch._C import int8
-from torch import nn
-from torch.optim import Adam
-from torch import autograd
 import torch
+from torch import nn, autograd
+from torch.optim import Adam 
 import copy
 
 class Dataset(torch.utils.data.Dataset):
@@ -44,12 +41,13 @@ class Dataset(torch.utils.data.Dataset):
 
         return batch_texts, batch_y        
     
-def evaluate(model, val_loader, use_cuda):
+def evaluate(model, val_loader, use_cuda, criterion):
     
     val_dataloader = val_loader
 
-    if use_cuda:
-        model = model.cuda()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    model.to(device)
+
     
     model.eval()
     
@@ -233,10 +231,6 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
             train_loss.backward()
             optimizer.step()
 
-            # if (step+1) % (steps//3) == 0 and (epoch+1)%args.epoch_print_step == 0:
-            #     print(f'Steps: {step+1} | Training Loss: {sum(train_loss_ls_epoch)/len(train_loss_ls_epoch):.3f} | \
-            #                 Training Accuracy: {sum(train_acc_ls_epoch)/len(train_acc_ls_epoch):.3f}')
-
         epoch_train_loss = sum(train_loss_ls_epoch)/len(train_loss_ls_epoch)
         epoch_train_acc = sum(train_acc_ls_epoch)/len(train_acc_ls_epoch)
         
@@ -250,7 +244,7 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
         val_dataloaders = [envs[i]["val_dataloader"] for i in range(len(envs)) if envs[i]['train']==True]
         
         for val_dataloader in val_dataloaders:
-            val_loss, val_acc = evaluate(model, val_dataloader, use_cuda)
+            val_loss, val_acc = evaluate(model, val_dataloader, use_cuda, criterion)
             epoch_val_loss.append(val_loss)
             epoch_val_acc.append(val_acc)
 
@@ -271,7 +265,6 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
                 print("### save best model ###")
                 model.to('cpu')  # moves model (its parameters) to cpu
                 best_model_val = avg_val_acc
-                #model_path_pt = args.model_path+ '_checkpoint.pt'
                 best_model_config = {'epoch': epoch,
                                     'model_state_dict':  copy.deepcopy(model.state_dict()),
                                     'validation_acc': best_model_val}
@@ -283,7 +276,6 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
             elif method == "erm":
                 model.to('cpu')  # moves model (its parameters) to cpu
                 best_model_val = avg_val_acc
-                #model_path_pt = args.model_path+ '_checkpoint.pt'
                 best_model_config = {'epoch': epoch,
                                     'model_state_dict':  copy.deepcopy(model.state_dict()),
                                     'validation_acc': best_model_val}
@@ -306,12 +298,6 @@ def train_model(n_steps, envs, model, optim, args, method='erm', linear_probing 
                         'validation_acc': avg_val_acc}
     PATH = args.model_path+'_last_model_ckpt'
     torch.save(last_model_config, PATH)
-    ### load 
-
-    #checkpoint = torch.load(PATH)
-    #model.load_state_dict(checkpoint['model_state_dict'])
-    #epoch = checkpoint['epoch']
-    #val_accuracy = checkpoint['validation_acc']
 
     ### log_results_in_dataframe if needed
     if args.save_training_history:
