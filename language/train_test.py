@@ -84,6 +84,7 @@ if __name__ == "__main__":
         num_classes = 2
         data_dir = prep_aic(raw_data)
 
+
     train_period = '_'.join(training_years)
     if model_name == 'bert':
         model = BertClassifier(num_classes=num_classes)

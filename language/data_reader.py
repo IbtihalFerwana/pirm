@@ -142,7 +142,7 @@ def prep_aic(raw_data):
     splits = ['train','test','dev']
     for split in splits:
         if split == 'train':
-            g = glob.glob(f'{raw_data}/{split}/indivis/*')
+            g = glob.glob(f'{raw_data}/{split}/indivs/*')
         else:
             g = glob.glob(f'{raw_data}/{split}/*')
         if split == 'dev':
@@ -154,7 +154,7 @@ def prep_aic(raw_data):
             os.makedirs(f'{new_split_dir}')
         
         for g1 in g:
-            print(g1)
+            #print(g1)
             newfile_name = g1.split('/')[-1]
             newfile_name = f'{new_split_dir}/{newfile_name}'
             
