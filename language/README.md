@@ -48,7 +48,7 @@ python pirm/language/conditional_train_model_script_final_v1.py \
 
 ## AIC
 ### Data
-1. Download [aic_data](https://drive.google.com/drive/folders/1reoEybksfLi9np14klLLhXPB8wVJlpo0?usp=sharing) which is originally derived from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic)
+1. Download [aic_data](https://drive.google.com/file/d/1B3fHiUfN4tXNvJQ5BMxlUmaTi7FeeX5I/view?usp=sharing) which is originally derived from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic)
 2. Unzip `aic` directory
 
 ##### Example: to run P-IRM (conditioned) on 2 envs
