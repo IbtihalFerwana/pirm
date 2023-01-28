@@ -2,12 +2,12 @@ The script can run both NLP tasks: `scierc` and `aic`
 
 ## SciERC
 ### Data
-Download `raw_data` from [SciERC](http://nlp.cs.washington.edu/sciIE/).
+1. Download `raw_data` from [SciERC](http://nlp.cs.washington.edu/sciIE/).
 
 ##### Example: to run P-IRM (partitioned) on 3 envs
 
 ```
-python pirm/language/conditional_train_model_script_final_v1.py \
+python pirm/language/train_test.py \
 --batch_size 8 \
 --penalty_weight 1000 \
 --penalty_anneal_iters 40 \
@@ -48,16 +48,17 @@ python pirm/language/conditional_train_model_script_final_v1.py \
 
 ## AIC
 ### Data
-Download [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic) and follow the [lfs](https://git-lfs.github.com/) instructions to download AIC data. Save data into `raw_data` directory
+1. Download [aic_data](https://drive.google.com/drive/folders/1reoEybksfLi9np14klLLhXPB8wVJlpo0?usp=sharing) which is originally derived from [aic](https://github.com/Kel-Lu/time-waits-for-no-one/tree/main/data/aic)
+2. Unzip `aic` directory
 
 ##### Example: to run P-IRM (conditioned) on 2 envs
 
 ```
-python pirm/language/conditional_train_model_script_final_v1.py \
+python pirm/language/train_test.py \
 --training_years 2006 2009 2012 2015 \
 --method "irm" \
 --testing_years 2018 \
---raw_data "raw_data" \
+--raw_data "aic_data" \
 --model "bert" \
 --save_training_history True \
 --save_best_model True \
