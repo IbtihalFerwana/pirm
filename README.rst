@@ -14,7 +14,7 @@ Official implementation of the experiments in the paper `"**Learning Optimal Fea
 
 Each folder contains a different experiment. Please follow the instructions 
 in the respective folder on how to run the experiments and reproduce the results. 
-`This repository https://github.com/IbtihalFerwana/pirm>`_ is implemented in `PyTorch <https://pytorch.org/>`_.
+`This repository <https://github.com/MoulikChoraria/IbtihalFerwana/pirm>`_ is implemented in `PyTorch <https://pytorch.org/>`_.
 
 
 
