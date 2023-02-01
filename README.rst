@@ -47,7 +47,7 @@ If you use this code, please cite [1]_:
   doi = {10.48550/ARXIV.2301.12067},
   url = {https://arxiv.org/abs/2301.12067},
   author = {Choraria, Moulik and Ferwana, Ibtihal and Mani, Ankur and Varshney, Lav R.},
-  keywords = {Machine Learning (cs.LG), Computer Vision and Pattern Recognition (cs.CV), FOS: Computer and information sciences, FOS: Computer and information sciences},
+  keywords = {Machine Learning (cs.LG), Computer Vision and Pattern Recognition (cs.CV), FOS: Computer and information sciences},
   title = {Learning Optimal Features via Partial Invariance},
   publisher = {arXiv},
   year = {2023},
