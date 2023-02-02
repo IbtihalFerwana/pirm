@@ -51,8 +51,7 @@ If you use this code, please cite [1]_:
   title = {Learning Optimal Features via Partial Invariance},
   publisher = {arXiv},
   year = {2023},
-  copyright = {Creative Commons Attribution 4.0 International}
-}
+  copyright = {Creative Commons Attribution 4.0 International}}
   
 References
 ==========
